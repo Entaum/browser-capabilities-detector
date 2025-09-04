@@ -156,7 +156,7 @@ class BrowserDetector {
             
             // Graphics & Audio
             canvas2D: this.checkCanvas2DSupport(),
-            webAudio: 'AudioContext' in window || 'webkitAudioContext' in window,
+            webAudio: 'AudioContext' in window,
             
             // Device Features
             gamepad: 'getGamepads' in navigator,
