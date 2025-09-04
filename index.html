@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Test your browser's compatibility with modern web game technologies">
+    <meta name="theme-color" content="#0f172a">
+    <title>Browser Game Compatibility Test | Spawnd</title>
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="css/base.css" as="style">
+    <link rel="preload" href="js/main.js" as="script">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="assets/spawnd-icon.svg">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Browser Game Compatibility Test">
+    <meta property="og:description" content="Test your browser's compatibility with modern web game technologies">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://test.spawnd.gg">
+</head>
+<body>
+    <!-- Landing Page Container -->
+    <div id="app" class="app-container">
+        <div class="landing-container">
+            <header class="spawnd-header">
+                <div class="header-content">
+                    <div class="logo-section">
+                        <img class="logo" src="spawnd_logo.png" alt="Spawnd Logo" width="160" height="160">
+                    </div>
+                    <div class="header-subtitle">
+                        Browser Game Compatibility Test
+                    </div>
+                </div>
+            </header>
+            
+            <main class="hero-section">
+                <div class="hero-content">
+                    <h2 class="hero-title">Is your browser ready for modern web games?</h2>
+                    <p class="hero-description">
+                        Test your browser's compatibility with gaming technologies like WebGL, WebGPU, 
+                        WebAssembly, and more. Get personalized recommendations to optimize your setup.
+                    </p>
+                    
+                    <button id="start-test" class="cta-button" aria-label="Start compatibility test">
+                        <span class="button-text">Start Compatibility Test</span>
+                        <div class="button-glow"></div>
+                        <svg class="button-icon" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    
+                    <div class="test-preview">
+                        <div class="preview-label">We'll test these technologies:</div>
+                        <div class="preview-grid">
+                            <div class="preview-item">
+                                <div class="preview-icon">🎮</div>
+                                <span>WebGL 2.0</span>
+                            </div>
+                            <div class="preview-item">
+                                <div class="preview-icon">⚡</div>
+                                <span>WebGPU</span>
+                            </div>
+                            <div class="preview-item">
+                                <div class="preview-icon">🔧</div>
+                                <span>WebAssembly</span>
+                            </div>
+                            <div class="preview-item">
+                                <div class="preview-icon">🎯</div>
+                                <span>GamePad API</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            
+            <footer class="landing-footer">
+                <p class="footer-text">
+                    Powered by <strong>Spawnd</strong> • 
+                    <span class="offline-indicator" id="offline-status"></span>
+                </p>
+            </footer>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="js/browser-detect.js"></script>
+    <script src="js/test-engine.js"></script>
+    <script src="js/main.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

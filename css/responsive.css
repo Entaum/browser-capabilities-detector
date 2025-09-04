@@ -1,0 +1,296 @@
+/* Responsive Styles */
+
+/* Mobile First Approach */
+
+/* Small Mobile (320px+) - Default styles above */
+
+/* Large Mobile (480px+) */
+@media (min-width: 480px) {
+  .hero-title {
+    font-size: var(--font-size-4xl);
+  }
+  
+  .cta-button {
+    font-size: var(--font-size-xl);
+    padding: var(--spacing-xl) var(--spacing-2xl);
+  }
+  
+  .preview-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Tablet (768px+) */
+@media (min-width: 768px) {
+  .container {
+    padding: 0 var(--spacing-lg);
+  }
+  
+  .header-content {
+    padding: 0 var(--spacing-lg);
+  }
+  
+  .hero-content {
+    padding: 0 var(--spacing-lg);
+  }
+  
+  .spawnd-header {
+    padding: var(--spacing-xl) 0;
+  }
+  
+  .hero-section {
+    padding: var(--spacing-2xl) 0 var(--spacing-2xl);
+  }
+  
+  .hero-title {
+    font-size: 3.5rem;
+    margin-bottom: var(--spacing-xl);
+  }
+  
+  .hero-description {
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-2xl);
+  }
+  
+  .test-preview {
+    max-width: 600px;
+  }
+  
+  .preview-grid {
+    gap: var(--spacing-lg);
+  }
+  
+  .preview-item {
+    padding: var(--spacing-lg);
+  }
+  
+  /* Testing Progress - Tablet */
+  .testing-container {
+    padding: var(--spacing-2xl);
+  }
+  
+  .current-test {
+    flex-direction: row;
+    text-align: left;
+    padding: var(--spacing-xl) var(--spacing-2xl);
+  }
+  
+  .test-icon {
+    margin-bottom: 0;
+    margin-right: var(--spacing-lg);
+  }
+  
+  /* Results - Tablet */
+  .results-header {
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    text-align: center;
+  }
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+  .container {
+    padding: 0 var(--spacing-xl);
+  }
+  
+  .header-content {
+    padding: 0 var(--spacing-xl);
+  }
+  
+  .hero-content {
+    padding: 0 var(--spacing-xl);
+    max-width: 800px;
+  }
+  
+  .hero-title {
+    font-size: 4rem;
+    line-height: 1.1;
+  }
+  
+  .hero-description {
+    font-size: var(--font-size-xl);
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .cta-button {
+    font-size: var(--font-size-xl);
+    padding: var(--spacing-xl) var(--spacing-2xl);
+  }
+  
+  .test-preview {
+    max-width: 700px;
+  }
+  
+  /* Header Layout - Desktop */
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+  }
+  
+  .logo-section {
+    justify-content: flex-start;
+    margin-bottom: 0;
+  }
+  
+  .header-subtitle {
+    text-align: right;
+  }
+  
+  /* Results - Desktop */
+  .results-header {
+    flex-direction: row;
+    text-align: left;
+  }
+  
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+  }
+}
+
+/* Large Desktop (1440px+) */
+@media (min-width: 1440px) {
+  .hero-title {
+    font-size: 4.5rem;
+  }
+  
+  .hero-content {
+    max-width: 900px;
+  }
+  
+  .test-preview {
+    max-width: 800px;
+  }
+  
+  /* Results Grid - Large Desktop */
+  .results-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Extra Large Desktop (1920px+) */
+@media (min-width: 1920px) {
+  .container {
+    max-width: 1400px;
+  }
+  
+  .hero-content {
+    max-width: 1000px;
+  }
+  
+  .results-container {
+    max-width: 1200px;
+  }
+  
+  /* Results Grid - XL Desktop */
+  .results-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Print Styles */
+@media print {
+  .landing-container {
+    background: white;
+    color: black;
+  }
+  
+  .cta-button,
+  .button-glow {
+    display: none;
+  }
+  
+  .test-preview {
+    break-inside: avoid;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  :root {
+    --bg-primary: #000000;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #333333;
+    --text-primary: #ffffff;
+    --text-secondary: #e0e0e0;
+    --spawnd-primary: #7c3aed;
+  }
+  
+  .preview-item,
+  .current-test {
+    border-width: 2px;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .button-glow {
+    display: none;
+  }
+  
+  .cta-button:hover {
+    transform: none;
+  }
+  
+  .preview-item:hover {
+    transform: none;
+  }
+}
+
+/* Touch Device Optimizations */
+@media (pointer: coarse) {
+  .cta-button {
+    padding: var(--spacing-xl) var(--spacing-2xl);
+    min-height: 48px;
+  }
+  
+  .preview-item {
+    padding: var(--spacing-lg);
+    min-height: 48px;
+  }
+  
+  /* Increase touch targets */
+  button, a, [tabindex] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Hover-capable devices */
+@media (hover: hover) {
+  .cta-button:hover {
+    transform: translateY(-2px);
+  }
+  
+  .preview-item:hover {
+    background: var(--bg-hover);
+    transform: translateY(-1px);
+  }
+}
+
+/* Dark mode preference (already default, but good for specificity) */
+@media (prefers-color-scheme: dark) {
+  /* Our styles are already dark by default */
+}
+
+/* Light mode override (if needed in future) */
+@media (prefers-color-scheme: light) {
+  /* 
+   * Currently not implemented as per requirements,
+   * but structure is here for future enhancement
+   */
+}
