@@ -267,9 +267,18 @@ class PerformanceTests {
             const totalFeatures = Object.keys(capabilities).length;
             const score = Math.round((supportedFeatures / totalFeatures) * 100);
 
+            let status;
+            if (score >= 70) {
+                status = 'supported';
+            } else if (score >= 30) {
+                status = 'partial';
+            } else {
+                status = 'unsupported';
+            }
+
             return {
-                status: 'supported',
-                details: `IntersectionObserver fully functional`,
+                status,
+                details: `IntersectionObserver with ${supportedFeatures}/${totalFeatures} features`,
                 capabilities,
                 score
             };
@@ -334,9 +343,18 @@ class PerformanceTests {
             const totalFeatures = Object.keys(capabilities).length;
             const score = Math.round((supportedFeatures / totalFeatures) * 100);
 
+            let status;
+            if (score >= 70) {
+                status = 'supported';
+            } else if (score >= 30) {
+                status = 'partial';
+            } else {
+                status = 'unsupported';
+            }
+
             return {
-                status: 'supported',
-                details: `ResizeObserver fully functional`,
+                status,
+                details: `ResizeObserver with ${supportedFeatures}/${totalFeatures} features`,
                 capabilities,
                 score
             };

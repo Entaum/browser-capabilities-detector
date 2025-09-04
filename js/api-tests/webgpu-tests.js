@@ -222,8 +222,20 @@ class WebGPUTests {
             const supportedFeatures = Object.values(featureSupport).filter(Boolean).length;
             const score = Math.round((supportedFeatures / commonFeatures.length) * 100);
 
+            // Determine status based on score
+            let status;
+            if (score >= 70) {
+                status = 'supported';
+            } else if (score >= 30) {
+                status = 'partial';
+            } else if (score > 0) {
+                status = 'partial';
+            } else {
+                status = 'unsupported';
+            }
+
             return {
-                status: 'supported',
+                status,
                 details: `WebGPU device features: ${supportedFeatures}/${commonFeatures.length} common features`,
                 features: featureSupport,
                 allFeatures: features,

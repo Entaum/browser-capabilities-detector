@@ -244,8 +244,19 @@ class WebGLTests {
             const totalCount = commonExtensions.length;
             const score = Math.round((supportedCount / totalCount) * 100);
 
+            let status;
+            if (score >= 70) {
+                status = 'supported';
+            } else if (score >= 30) {
+                status = 'partial';
+            } else if (score > 0) {
+                status = 'partial';
+            } else {
+                status = 'unsupported';
+            }
+
             return {
-                status: supportedCount > 0 ? 'supported' : 'unsupported',
+                status,
                 details: `${supportedCount}/${totalCount} common extensions supported`,
                 extensions: extensionStatus,
                 availableExtensions,

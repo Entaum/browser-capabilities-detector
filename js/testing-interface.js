@@ -33,6 +33,49 @@ class TestingInterface {
             </div>
             
             <div class="testing-progress">
+                <div class="final-score-container" id="final-score-container" style="display: none;">
+                    <div class="final-score-card">
+                        <div class="final-score-label">Browser Compatibility Score</div>
+                        <div class="gauge-container">
+                            <div class="gauge" id="compatibility-gauge">
+                                <svg width="200" height="200" viewBox="0 0 200 200" class="gauge-svg">
+                                    <defs>
+                                        <linearGradient id="speedometer-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" style="stop-color:#ef4444;stop-opacity:1" />
+                                            <stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1" />
+                                            <stop offset="50%" style="stop-color:#eab308;stop-opacity:1" />
+                                            <stop offset="75%" style="stop-color:#10b981;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    
+                                    <!-- Background track -->
+                                    <circle cx="100" cy="100" r="85" fill="none" stroke="#374151" stroke-width="20" stroke-linecap="round" transform="rotate(135 100 100)" stroke-dasharray="401 534" class="gauge-bg" opacity="0.2"></circle>
+                                    
+                                    <!-- Animated gradient fill -->
+                                    <circle cx="100" cy="100" r="85" fill="none" stroke="url(#speedometer-gradient)" stroke-width="20" stroke-linecap="round" transform="rotate(135 100 100)" stroke-dasharray="0 534" stroke-dashoffset="0" class="gauge-fill" id="gauge-fill"></circle>
+                                    
+                                    <!-- Tick marks -->
+                                    <g class="tick-marks" transform="rotate(135 100 100)">
+                                        <line x1="100" y1="25" x2="100" y2="35" stroke="#ffffff" stroke-width="2" opacity="0.6" transform="rotate(0 100 100)" />
+                                        <line x1="100" y1="25" x2="100" y2="40" stroke="#ffffff" stroke-width="3" opacity="0.8" transform="rotate(54 100 100)" />
+                                        <line x1="100" y1="25" x2="100" y2="35" stroke="#ffffff" stroke-width="2" opacity="0.6" transform="rotate(108 100 100)" />
+                                        <line x1="100" y1="25" x2="100" y2="40" stroke="#ffffff" stroke-width="3" opacity="0.8" transform="rotate(162 100 100)" />
+                                        <line x1="100" y1="25" x2="100" y2="35" stroke="#ffffff" stroke-width="2" opacity="0.6" transform="rotate(216 100 100)" />
+                                        <line x1="100" y1="25" x2="100" y2="40" stroke="#ffffff" stroke-width="3" opacity="0.8" transform="rotate(270 100 100)" />
+                                    </g>
+                                </svg>
+                                <div class="gauge-cover">
+                                    <div class="gauge-score" id="gauge-score">0</div>
+                                    <div class="gauge-percent">%</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="final-score-breakdown" id="final-score-breakdown"></div>
+                        <div class="compatibility-status" id="compatibility-status"></div>
+                    </div>
+                </div>
+                
                 <div class="progress-bar-container">
                     <div class="progress-bar" id="overall-progress">
                         <div class="progress-fill"></div>
@@ -65,6 +108,11 @@ class TestingInterface {
                     <h3>⚡ Performance APIs</h3>
                     <div class="test-items" id="performance-tests"></div>
                 </div>
+            </div>
+
+            <div class="improvement-report" id="improvement-report">
+                <h3>🚀 How to Improve Your Score</h3>
+                <div class="improvement-content" id="improvement-report-content"></div>
             </div>
 
             <div class="testing-actions">
@@ -104,11 +152,11 @@ class TestingInterface {
             behavior: 'smooth' 
         });
         
-        // Add some delay then scroll to progress section
+        // Add some delay then scroll to testing header
         setTimeout(() => {
-            const progressSection = this.container.querySelector('.testing-progress');
-            if (progressSection) {
-                progressSection.scrollIntoView({ 
+            const testingHeader = this.container.querySelector('.testing-header');
+            if (testingHeader) {
+                testingHeader.scrollIntoView({ 
                     behavior: 'smooth', 
                     block: 'start' 
                 });
@@ -208,12 +256,15 @@ class TestingInterface {
             testItem.id = `test-${test.id}`;
             
             testItem.innerHTML = `
-                <div class="test-header">
+                <div class="test-header" onclick="this.parentElement.classList.toggle('expanded')">
                     <span class="test-name">${test.name}</span>
                     <span class="test-status">⏳ Pending</span>
+                    <span class="test-expand-icon">▼</span>
                 </div>
-                <div class="test-description">${test.description}</div>
-                <div class="test-result hidden"></div>
+                <div class="test-details">
+                    <div class="test-description">${test.description}</div>
+                    <div class="test-result hidden"></div>
+                </div>
             `;
 
             container.appendChild(testItem);
@@ -321,13 +372,22 @@ class TestingInterface {
         if (details && (status !== 'running' && status !== 'pending')) {
             resultElement.textContent = details;
             resultElement.classList.remove('hidden');
-            
-            // Add score if available
-            if (result && typeof result.score === 'number') {
+        }
+        
+        // Add score if available - place it in the lower right of the test details
+        if (result && typeof result.score === 'number' && (status !== 'running' && status !== 'pending')) {
+            const testDetails = testElement.querySelector('.test-details');
+            if (testDetails) {
+                // Remove any existing score
+                const existingScore = testDetails.querySelector('.test-score');
+                if (existingScore) {
+                    existingScore.remove();
+                }
+                
                 const scoreElement = document.createElement('div');
                 scoreElement.className = 'test-score';
-                scoreElement.textContent = `Score: ${result.score}%`;
-                resultElement.appendChild(scoreElement);
+                scoreElement.textContent = `${result.score}%`;
+                testDetails.appendChild(scoreElement);
             }
         }
     }
@@ -409,15 +469,215 @@ class TestingInterface {
         const results = Array.from(this.testResults.values());
         const supported = results.filter(r => r.status === 'supported').length;
         const partial = results.filter(r => r.status === 'partial').length;
+        const unsupported = results.filter(r => r.status === 'unsupported').length;
+        const error = results.filter(r => r.status === 'error').length;
         const total = results.length;
         
         const score = total > 0 ? Math.round(((supported + partial * 0.5) / total) * 100) : 0;
         
+        // Show final score in the progress area
+        this.displayFinalScore(score, supported, partial, unsupported, error, total);
+        
+        // Still show toast notification for immediate feedback
         this.showNotification(
             `Testing Complete! Compatibility Score: ${score}% (${supported}/${total} fully supported)`,
             'success',
-            5000
+            3000
         );
+    }
+
+    /**
+     * Display final score in progress area
+     */
+    displayFinalScore(score, supported, partial, unsupported, error, total) {
+        const container = document.getElementById('final-score-container');
+        const gaugeScore = document.getElementById('gauge-score');
+        const gaugeFill = document.getElementById('gauge-fill');
+        const scoreBreakdown = document.getElementById('final-score-breakdown');
+        
+        // Update gauge score
+        gaugeScore.textContent = score;
+        
+        // Calculate gauge fill
+        // Full circle circumference = 2 * π * r = 2 * π * 85 ≈ 534
+        // We want 75% of the circle (270 degrees out of 360)
+        const radius = 85;
+        const fullCircumference = 2 * Math.PI * radius; // ≈ 534
+        const gaugeArcLength = fullCircumference * 0.75; // 75% of circle = 270 degrees
+        const fillLength = (score / 100) * gaugeArcLength;
+        
+        // Set initial fill state - start with 0 length
+        gaugeFill.setAttribute('stroke-dasharray', `0 534`);
+        gaugeFill.setAttribute('stroke-dashoffset', '0');
+        
+        // Create breakdown text
+        const breakdownParts = [];
+        if (supported > 0) breakdownParts.push(`${supported} fully supported`);
+        if (partial > 0) breakdownParts.push(`${partial} partially supported`);
+        if (unsupported > 0) breakdownParts.push(`${unsupported} unsupported`);
+        if (error > 0) breakdownParts.push(`${error} errors`);
+        
+        scoreBreakdown.textContent = `${breakdownParts.join(' • ')} • Total: ${total} tests`;
+        
+        // Show the container and scroll to it
+        container.style.display = 'block';
+        
+        // Scroll to the gauge area first
+        setTimeout(() => {
+            container.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+        }, 200);
+        
+        // Then animate the container appearance
+        setTimeout(() => {
+            container.classList.add('show');
+            // Animate the gauge fill after everything is visible and scrolled to
+            setTimeout(() => {
+                gaugeFill.classList.add('animate');
+                // Fill the gauge to show the score amount
+                gaugeFill.setAttribute('stroke-dasharray', `${fillLength} 534`);
+            }, 800); // Longer delay to allow scroll + appearance
+        }, 500);
+        
+        // Dim progress info since testing is complete but keep it visible
+        const progressInfo = document.querySelector('.progress-info');
+        if (progressInfo) {
+            progressInfo.style.opacity = '0.6';
+        }
+
+        // Update compatibility status message
+        this.updateCompatibilityStatus(score, error, unsupported);
+        
+        // Generate improvement report
+        this.generateImprovementReport();
+    }
+
+    /**
+     * Update compatibility status message based on score
+     */
+    updateCompatibilityStatus(score, errorCount, unsupportedCount) {
+        const statusElement = document.getElementById('compatibility-status');
+        if (!statusElement) return;
+
+        let message = '';
+        let className = '';
+
+        if (score >= 80 && errorCount === 0) {
+            message = "Your browser can run modern web games";
+            className = 'status-excellent';
+        } else if (score >= 60 && errorCount <= 2) {
+            message = "Your browser can run most web games with good performance";
+            className = 'status-good';
+        } else if (score >= 40) {
+            message = "Your browser may have issues running some modern web games";
+            className = 'status-fair';
+        } else {
+            message = "Your browser may not be able to run many modern web games";
+            className = 'status-poor';
+        }
+
+        // Create the status content with "Go To Report" link below the message
+        const hasIssues = errorCount > 0 || unsupportedCount > 0;
+        const reportLink = hasIssues ? '<div class="go-to-report-container"><a href="#" class="go-to-report-link" onclick="event.preventDefault(); document.getElementById(\'improvement-report\').scrollIntoView({behavior: \'smooth\', block: \'start\'}); return false;">Go To Report →</a></div>' : '';
+        
+        statusElement.innerHTML = '<div class="status-message">' + message + '</div>' + reportLink;
+        statusElement.className = `compatibility-status ${className}`;
+    }
+
+    /**
+     * Generate improvement report with actionable guidance
+     */
+    generateImprovementReport() {
+        const reportContent = document.getElementById('improvement-report-content');
+        if (!reportContent) return;
+
+        const results = Array.from(this.testResults.values());
+        const issues = results.filter(r => r.status === 'unsupported' || r.status === 'error');
+        
+        if (issues.length === 0) {
+            reportContent.innerHTML = '<p class="no-issues">Great! Your browser supports all tested features. No improvements needed.</p>';
+            return;
+        }
+
+        const reportSections = [];
+        const categoryIssues = {};
+
+        // Group issues by category
+        issues.forEach(issue => {
+            if (!categoryIssues[issue.category]) {
+                categoryIssues[issue.category] = [];
+            }
+            categoryIssues[issue.category].push(issue);
+        });
+
+        // Generate recommendations for each category
+        Object.keys(categoryIssues).forEach(category => {
+            const categoryTitle = category.charAt(0).toUpperCase() + category.slice(1);
+            const categoryIssueList = categoryIssues[category];
+            
+            let sectionHTML = `<div class="report-section">
+                <h4>${categoryTitle} Issues</h4>
+                <div class="issue-list">`;
+
+            categoryIssueList.forEach(issue => {
+                const guidance = this.getImprovementGuidance(issue);
+                sectionHTML += `
+                    <div class="issue-item">
+                        <div class="issue-name">${issue.name}</div>
+                        <div class="issue-status status-${issue.status}">${issue.status}</div>
+                        <div class="issue-guidance">${guidance}</div>
+                    </div>`;
+            });
+
+            sectionHTML += '</div></div>';
+            reportSections.push(sectionHTML);
+        });
+
+        reportContent.innerHTML = reportSections.join('');
+    }
+
+    /**
+     * Get specific improvement guidance for an issue
+     */
+    getImprovementGuidance(issue) {
+        const guidanceMap = {
+            // Graphics & WebGL
+            'WebGL Context': 'Enable hardware acceleration in your browser settings. For Chrome: chrome://settings/system → "Use hardware acceleration when available"',
+            'WebGL Extensions': 'Update your graphics drivers. Visit your GPU manufacturer\'s website (NVIDIA, AMD, Intel) for the latest drivers.',
+            'Canvas API': 'This is a core web standard. Consider updating your browser to a newer version.',
+            
+            // Audio
+            'Web Audio API': 'Update your browser to a newer version. Web Audio API is supported in all modern browsers.',
+            'Audio Context': 'Check if audio is blocked by your browser\'s autoplay policy. Try interacting with the page first.',
+            
+            // Communication
+            'WebSocket API': 'Check your network configuration and firewall settings. WebSockets may be blocked by corporate networks.',
+            'WebRTC API': 'Enable camera/microphone permissions if prompted. Some features require HTTPS connection.',
+            
+            // Storage
+            'IndexedDB': 'Clear browser storage if full. Check browser privacy settings - private/incognito mode may disable IndexedDB.',
+            'localStorage API': 'Disable private browsing mode. Check if third-party cookies are enabled.',
+            
+            // Performance
+            'Web Workers': 'Update your browser. Web Workers are supported in all modern browsers since 2010.',
+            'SharedArrayBuffer': 'This requires HTTPS and special security headers. SharedArrayBuffer was disabled in some browsers due to Spectre vulnerabilities.',
+            
+            // Gaming specific
+            'Gamepad API': 'Connect a gamepad and try again. The Gamepad API only detects controllers when they\'re actively connected.',
+            'Pointer Lock API': 'This requires user interaction. Click on the page and try again.',
+            'Fullscreen API': 'This requires user interaction. Some browsers block fullscreen in certain contexts.',
+            
+            // Device
+            'Device Motion API': 'Enable motion sensors in browser settings. This feature requires HTTPS on many browsers.',
+            'Geolocation API': 'Enable location permissions when prompted. Check browser privacy settings.',
+            
+            // Default guidance
+            'default': 'Update your browser to the latest version. This feature may not be supported in older browsers.'
+        };
+
+        return guidanceMap[issue.name] || guidanceMap['default'];
     }
 
     /**
@@ -492,6 +752,25 @@ class TestingInterface {
         this.testQueue = [];
         this.isRunning = false;
         this.currentTest = null;
+        
+        // Reset final score display
+        const finalScoreContainer = document.getElementById('final-score-container');
+        const gaugeFill = document.getElementById('gauge-fill');
+        if (finalScoreContainer) {
+            finalScoreContainer.style.display = 'none';
+            finalScoreContainer.classList.remove('show');
+        }
+        if (gaugeFill) {
+            gaugeFill.classList.remove('animate');
+            gaugeFill.setAttribute('stroke-dasharray', '0 534');
+            gaugeFill.setAttribute('stroke-dashoffset', '0');
+        }
+        
+        // Reset progress info opacity
+        const progressInfo = document.querySelector('.progress-info');
+        if (progressInfo) {
+            progressInfo.style.opacity = '';
+        }
     }
 
     /**

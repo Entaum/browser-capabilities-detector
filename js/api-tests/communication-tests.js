@@ -268,9 +268,18 @@ class CommunicationTests {
             const supportedFeatures = Object.values(capabilities).filter(Boolean).length;
             const score = Math.round((supportedFeatures / Object.keys(capabilities).length) * 100);
 
+            let status;
+            if (score >= 70) {
+                status = 'supported';
+            } else if (score >= 30) {
+                status = 'partial';
+            } else {
+                status = 'unsupported';
+            }
+
             return {
-                status: 'supported',
-                details: 'Server-Sent Events fully supported',
+                status,
+                details: `Server-Sent Events API with ${supportedFeatures}/${Object.keys(capabilities).length} features`,
                 capabilities,
                 score
             };
@@ -321,8 +330,17 @@ class CommunicationTests {
             const supportedFeatures = Object.values(capabilities).filter(Boolean).length;
             const score = Math.round((supportedFeatures / Object.keys(capabilities).length) * 100);
 
+            let status;
+            if (score >= 70) {
+                status = 'supported';
+            } else if (score >= 30) {
+                status = 'partial';
+            } else {
+                status = 'unsupported';
+            }
+
             return {
-                status: 'supported',
+                status,
                 details: `Fetch API functional with ${supportedFeatures}/${Object.keys(capabilities).length} features`,
                 capabilities: {
                     ...capabilities,
@@ -381,8 +399,17 @@ class CommunicationTests {
                 const supportedFeatures = Object.values(capabilities).filter(Boolean).length;
                 const score = Math.round((supportedFeatures / Object.keys(capabilities).length) * 100);
 
+                let status;
+                if (score >= 70) {
+                    status = 'supported';
+                } else if (score >= 30) {
+                    status = 'partial';
+                } else {
+                    status = 'unsupported';
+                }
+
                 return {
-                    status: 'supported',
+                    status,
                     details: `WebRTC Data Channels functional with ${supportedFeatures}/${Object.keys(capabilities).length} features`,
                     capabilities,
                     score

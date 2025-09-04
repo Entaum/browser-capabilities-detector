@@ -120,8 +120,17 @@ class GamingAPIsTests {
                          (pollingWorks && eventSupport.gamepadconnected) ? 80 : 
                          pollingWorks ? 60 : 30;
 
+            let status;
+            if (score >= 70) {
+                status = 'supported';
+            } else if (score >= 30) {
+                status = 'partial';
+            } else {
+                status = 'unsupported';
+            }
+
             return {
-                status: 'supported',
+                status,
                 details: `Gamepad API functional with ${connectedGamepads.length} connected gamepad(s)`,
                 gamepadInfo,
                 connectedCount: connectedGamepads.length,
@@ -700,11 +709,20 @@ class GamingAPIsTests {
             const supportedPatterns = Object.values(patternTests).filter(Boolean).length;
             const score = vibrateCallable ? (supportedPatterns / 3) * 100 : 0;
 
+            let status;
+            if (score >= 70) {
+                status = 'supported';
+            } else if (score >= 30) {
+                status = 'partial';
+            } else if (score > 0) {
+                status = 'partial';
+            } else {
+                status = 'unsupported';
+            }
+
             return {
-                status: vibrateCallable ? 'supported' : 'partial',
-                details: vibrateCallable ? 
-                        `Vibration API functional with ${supportedPatterns}/3 pattern types` :
-                        'Vibration API present but not functional',
+                status,
+                details: `Vibration API with ${supportedPatterns}/3 pattern types (callable: ${vibrateCallable})`,
                 callable: vibrateCallable,
                 patternSupport: patternTests,
                 score
