@@ -23,16 +23,29 @@ class TestingInterface {
         this.container.id = 'testing-interface';
         this.container.className = 'testing-interface hidden';
         
+        // Get browser info
+        const browserInfo = this.getBrowserInfo();
+        
         this.container.innerHTML = `
             <div class="testing-header">
-                <h2>🧪 Browser Compatibility Testing</h2>
-                <div class="testing-controls">
-                    <button id="pause-testing" class="btn-secondary" disabled>Pause</button>
-                    <button id="stop-testing" class="btn-danger" disabled>Stop</button>
+                <div class="header-top">
+                    <h2>🧪 Browser Compatibility Testing</h2>
+                    <div class="testing-controls">
+                        <button id="pause-testing" class="btn-secondary" disabled>Pause</button>
+                        <button id="stop-testing" class="btn-danger" disabled>Stop</button>
+                    </div>
                 </div>
             </div>
             
             <div class="testing-progress">
+                <div class="browser-info-bar">
+                    <div class="browser-icon">${browserInfo.icon}</div>
+                    <div class="browser-details">
+                        <span class="browser-name">${browserInfo.name} ${browserInfo.version}</span>
+                        <span class="browser-engine">${browserInfo.engine}</span>
+                        ${browserInfo.updateBadge}
+                    </div>
+                </div>
                 <div class="final-score-container" id="final-score-container" style="display: none;">
                     <div class="final-score-card">
                         <div class="final-score-label">Browser Compatibility Score</div>
@@ -140,11 +153,14 @@ class TestingInterface {
     /**
      * Show the testing interface and hide landing page
      */
-    show() {
+    async show() {
         const landingPage = document.getElementById('landing-page');
         if (landingPage) landingPage.classList.add('hidden');
         
         this.container.classList.remove('hidden');
+        
+        // Update browser info with professional icons and version check
+        await this.updateBrowserInfo();
         
         // Scroll to top and ensure progress is visible
         window.scrollTo({ 
@@ -247,27 +263,46 @@ class TestingInterface {
             if (container) container.innerHTML = '';
         });
 
+        // Group tests by category and sort alphabetically within each category
+        const testsByCategory = {};
         this.testQueue.forEach(test => {
-            const container = categories[test.category];
+            if (!testsByCategory[test.category]) {
+                testsByCategory[test.category] = [];
+            }
+            testsByCategory[test.category].push(test);
+        });
+
+        // Sort tests within each category alphabetically
+        Object.keys(testsByCategory).forEach(category => {
+            testsByCategory[category].sort((a, b) => a.name.localeCompare(b.name));
+        });
+
+        // Render sorted tests
+        Object.entries(testsByCategory).forEach(([categoryName, tests]) => {
+            const container = categories[categoryName];
             if (!container) return;
 
-            const testItem = document.createElement('div');
-            testItem.className = 'test-item pending';
-            testItem.id = `test-${test.id}`;
-            
-            testItem.innerHTML = `
-                <div class="test-header" onclick="this.parentElement.classList.toggle('expanded')">
-                    <span class="test-name">${test.name}</span>
-                    <span class="test-status">⏳ Pending</span>
-                    <span class="test-expand-icon">▼</span>
-                </div>
-                <div class="test-details">
-                    <div class="test-description">${test.description}</div>
-                    <div class="test-result hidden"></div>
-                </div>
-            `;
+            tests.forEach(test => {
+                const testItem = document.createElement('div');
+                testItem.className = 'test-item pending';
+                testItem.id = `test-${test.id}`;
+                
+                const caniuseUrl = this.getCaniuseUrl(test.name);
+                testItem.innerHTML = `
+                    <div class="test-header" onclick="this.parentElement.classList.toggle('expanded')">
+                        <span class="test-name">${test.name}</span>
+                        <a href="${caniuseUrl}" target="_blank" class="test-help-link" onclick="event.stopPropagation()" title="View browser support on caniuse.com">?</a>
+                        <span class="test-status">⏳ Pending</span>
+                        <span class="test-expand-icon">▼</span>
+                    </div>
+                    <div class="test-details">
+                        <div class="test-description">${test.description}</div>
+                        <div class="test-result hidden"></div>
+                    </div>
+                `;
 
-            container.appendChild(testItem);
+                container.appendChild(testItem);
+            });
         });
     }
 
@@ -296,6 +331,15 @@ class TestingInterface {
                 });
                 
                 if (!dependencyMet) {
+                    // Add skipped test to results so it's counted in scoring
+                    const skippedResult = {
+                        status: 'unsupported',  // Treat skipped as unsupported for scoring
+                        details: 'Dependencies not met - API not available',
+                        name: test.name,
+                        category: test.category,
+                        duration: 0
+                    };
+                    this.testResults.set(test.id, skippedResult);
                     this.updateTestStatus(test.id, 'skipped', 'Dependencies not met');
                     completedTests++;
                     continue;
@@ -555,6 +599,250 @@ class TestingInterface {
     }
 
     /**
+     * Get browser information including icon and update status
+     */
+    getBrowserInfo() {
+        const ua = navigator.userAgent;
+        let name = 'Unknown';
+        let version = '';
+        let icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#6b7280"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="white" stroke-width="1" fill="none"/></svg>';
+        let engine = '';
+        
+        // Detect browser and version
+        if (ua.indexOf('Edg/') > -1) {
+            name = 'Microsoft Edge';
+            version = ua.match(/Edg\/(\d+\.\d+)/)?.[1] || '';
+            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M21.86 7.84c-.32-1.96-1.08-3.74-2.21-5.27C18.44.86 16.82 0 15.04 0c-1.86 0-3.54.92-4.86 2.45-1.32-1.53-3-2.45-4.86-2.45C3.5 0 1.88.86.67 2.57-.46 4.1-1.22 5.88-1.54 7.84c-.18.96-.18 1.96 0 2.92.36 2.64 1.44 5.04 3.15 6.96 1.89 2.13 4.32 3.28 6.93 3.28s5.04-1.15 6.93-3.28c1.71-1.92 2.79-4.32 3.15-6.96.18-.96.18-1.96 0-2.92z" fill="#0078d4"/></svg>';
+            engine = 'Chromium';
+        } else if (ua.indexOf('Chrome') > -1 && ua.indexOf('Edg') === -1) {
+            name = 'Chrome';
+            version = ua.match(/Chrome\/(\d+\.\d+)/)?.[1] || '';
+            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="url(#chrome-gradient)"/><circle cx="12" cy="12" r="4" fill="#4285f4"/><path d="M12 2C8.13 2 4.79 4.24 3.11 7.5l4.33 7.5C8.59 16.65 10.13 17 12 17s3.41-.35 4.56-1l4.33-7.5C19.21 4.24 15.87 2 12 2z" fill="#ea4335"/><path d="M3.11 16.5C4.79 19.76 8.13 22 12 22s7.21-2.24 8.89-5.5l-4.33-7.5C15.41 7.35 13.87 7 12 7s-3.41.35-4.56 1L3.11 16.5z" fill="#34a853"/><defs><linearGradient id="chrome-gradient"><stop offset="0%" stop-color="#fdd663"/><stop offset="100%" stop-color="#f7931e"/></linearGradient></defs></svg>';
+            engine = 'Chromium';
+        } else if (ua.indexOf('Safari') > -1 && ua.indexOf('Chrome') === -1) {
+            name = 'Safari';
+            version = ua.match(/Version\/(\d+\.\d+)/)?.[1] || '';
+            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="url(#safari-gradient)"/><path d="M12 4l1.5 6.5L20 12l-6.5 1.5L12 20l-1.5-6.5L4 12l6.5-1.5L12 4z" fill="white" stroke="#0066cc" stroke-width="0.5"/><defs><linearGradient id="safari-gradient"><stop offset="0%" stop-color="#00aaff"/><stop offset="100%" stop-color="#0066cc"/></linearGradient></defs></svg>';
+            engine = 'WebKit';
+        } else if (ua.indexOf('Firefox') > -1) {
+            name = 'Firefox';
+            version = ua.match(/Firefox\/(\d+\.\d+)/)?.[1] || '';
+            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0z" fill="url(#firefox-gradient)"/><path d="M19.5 7.5c-1.5-3-4.5-5-8-5-3.5 0-6.5 2-8 5 0 0 2.5-2 5.5-2s5.5 2 5.5 2c1 0 1.5.5 1.5 1.5v3c0 1.5 1 2.5 2.5 2.5s2.5-1 2.5-2.5V7.5z" fill="#ff6611"/><defs><linearGradient id="firefox-gradient"><stop offset="0%" stop-color="#ff9500"/><stop offset="100%" stop-color="#ff6611"/></linearGradient></defs></svg>';
+            engine = 'Gecko';
+        } else if (ua.indexOf('Opera') > -1 || ua.indexOf('OPR') > -1) {
+            name = 'Opera';
+            version = ua.match(/(?:Opera|OPR)\/(\d+\.\d+)/)?.[1] || '';
+            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#ff1b2d"/><path d="M12 4c-2.21 0-4 3.58-4 8s1.79 8 4 8 4-3.58 4-8-1.79-8-4-8z" fill="white"/></svg>';
+            engine = 'Chromium';
+        } else if (ua.indexOf('Brave') > -1) {
+            name = 'Brave';
+            version = ua.match(/Brave\/(\d+\.\d+)/)?.[1] || '';
+            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 0L8 8h8l-4-8z" fill="#fb542b"/><path d="M4 8l8 4-8 12V8z" fill="#fb542b"/><path d="M20 8v16l-8-12 8-4z" fill="#fb542b"/><circle cx="12" cy="16" r="2" fill="white"/></svg>';
+            engine = 'Chromium';
+        } else if (ua.indexOf('Vivaldi') > -1) {
+            name = 'Vivaldi';
+            version = ua.match(/Vivaldi\/(\d+\.\d+)/)?.[1] || '';
+            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#ef3939"/><path d="M8 8h8v8H8z" fill="white"/><path d="M10 10h4v4h-4z" fill="#ef3939"/></svg>';
+            engine = 'Chromium';
+        } else if (ua.indexOf('Arc') > -1) {
+            name = 'Arc';
+            version = ua.match(/Arc\/(\d+\.\d+)/)?.[1] || '';
+            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="url(#arc-gradient)"/><path d="M12 6a6 6 0 0 1 6 6" stroke="white" stroke-width="2" fill="none"/><path d="M12 6a6 6 0 0 0-6 6" stroke="white" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="2" fill="white"/><defs><linearGradient id="arc-gradient"><stop offset="0%" stop-color="#ff6b6b"/><stop offset="100%" stop-color="#4ecdc4"/></linearGradient></defs></svg>';
+            engine = 'Chromium';
+        } else if (ua.indexOf('DuckDuckGo') > -1) {
+            name = 'DuckDuckGo';
+            version = ua.match(/DuckDuckGo\/(\d+\.\d+)/)?.[1] || '';
+            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#de5833"/><path d="M8 10c0-2 2-4 4-4s4 2 4 4c0 1-1 2-2 2h-4c-1 0-2-1-2-2z" fill="white"/><circle cx="10" cy="9" r="1" fill="#de5833"/><circle cx="14" cy="9" r="1" fill="#de5833"/><path d="M12 14c-1 0-2-.5-2-1h4c0 .5-1 1-2 1z" fill="#de5833"/></svg>';
+            engine = 'WebKit';
+        }
+        
+        // Use fallback checking for initial display
+        const browserKey = name.toLowerCase().replace(' ', '');
+        const updateStatus = this.checkBrowserUpdateFallback(browserKey, version);
+        const updateBadge = updateStatus.badge;
+        
+        return {
+            name,
+            version,
+            icon,
+            engine: engine ? `(${engine})` : '',
+            updateBadge
+        };
+    }
+    
+    /**
+     * Load browser icon from SVG file
+     */
+    async loadBrowserIcon(iconPath) {
+        try {
+            const response = await fetch(iconPath);
+            if (response.ok) {
+                const svgText = await response.text();
+                // Modify the SVG to have consistent sizing
+                return svgText.replace('<svg', '<svg width="20" height="20"');
+            }
+        } catch (error) {
+            console.warn('Failed to load browser icon:', iconPath, error);
+        }
+        
+        // Fallback to a simple browser icon
+        return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#6b7280"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="white" stroke-width="1" fill="none"/></svg>';
+    }
+    
+    /**
+     * Check browser update status using caniuse data
+     */
+    async checkBrowserUpdateStatus(browserKey, currentVersion) {
+        if (!browserKey || !currentVersion) {
+            return { badge: '', isUpToDate: false };
+        }
+        
+        try {
+            // Fetch latest browser version data from caniuse API
+            const response = await fetch('https://caniuse.com/api/browser-versions');
+            
+            if (!response.ok) {
+                // Fallback to static version checking if API fails
+                return this.checkBrowserUpdateFallback(browserKey, currentVersion);
+            }
+            
+            const data = await response.json();
+            const browserData = data[browserKey];
+            
+            if (!browserData || !browserData.versions) {
+                return this.checkBrowserUpdateFallback(browserKey, currentVersion);
+            }
+            
+            // Get the latest stable version
+            const latestVersion = browserData.versions[browserData.versions.length - 1];
+            const currentMajor = parseInt(currentVersion.split('.')[0]) || 0;
+            const latestMajor = parseInt(latestVersion.split('.')[0]) || 0;
+            
+            if (currentMajor >= latestMajor) {
+                return {
+                    badge: '<span class="uptodate-badge">Up to Date</span>',
+                    isUpToDate: true
+                };
+            } else if (latestMajor - currentMajor >= 5) {
+                return {
+                    badge: '<span class="update-badge">Update Available</span>',
+                    isUpToDate: false
+                };
+            } else {
+                return {
+                    badge: '<span class="minor-update-badge">Minor Update Available</span>',
+                    isUpToDate: false
+                };
+            }
+            
+        } catch (error) {
+            console.warn('Failed to check browser version from caniuse:', error);
+            return this.checkBrowserUpdateFallback(browserKey, currentVersion);
+        }
+    }
+    
+    /**
+     * Fallback browser version checking with static data
+     */
+    checkBrowserUpdateFallback(browserKey, currentVersion) {
+        // Latest stable versions as of September 2025
+        const latestVersions = {
+            'chrome': 129,
+            'firefox': 130,
+            'safari': 18,
+            'edge': 129,
+            'opera': 112
+        };
+        
+        const currentMajor = parseInt(currentVersion.split('.')[0]) || 0;
+        const latestMajor = latestVersions[browserKey] || 0;
+        
+        if (currentMajor >= latestMajor) {
+            return {
+                badge: '<span class="uptodate-badge">Up to Date</span>',
+                isUpToDate: true
+            };
+        } else if (latestMajor > 0 && (latestMajor - currentMajor) >= 5) {
+            return {
+                badge: '<span class="update-badge">Update Available</span>',
+                isUpToDate: false
+            };
+        } else {
+            return {
+                badge: '<span class="minor-update-badge">Minor Update Available</span>',
+                isUpToDate: false
+            };
+        }
+    }
+
+    /**
+     * Get caniuse.com URL for a specific test
+     */
+    getCaniuseUrl(testName) {
+        const caniuseMap = {
+            // WebGL & Graphics
+            'WebGL Context': 'https://caniuse.com/webgl',
+            'WebGL 2.0': 'https://caniuse.com/webgl2',
+            'WebGL Extensions': 'https://caniuse.com/webgl',
+            'Canvas API': 'https://caniuse.com/canvas',
+            'OffscreenCanvas': 'https://caniuse.com/offscreencanvas',
+            
+            // WebGPU
+            'WebGPU Support': 'https://caniuse.com/webgpu',
+            'WebGPU Adapter': 'https://caniuse.com/webgpu',
+            'WebGPU Device': 'https://caniuse.com/webgpu',
+            
+            // WebAssembly
+            'WebAssembly Support': 'https://caniuse.com/wasm',
+            'WebAssembly Memory': 'https://caniuse.com/wasm',
+            'WebAssembly Table': 'https://caniuse.com/wasm',
+            'WebAssembly Global': 'https://caniuse.com/wasm',
+            'WebAssembly Threads': 'https://caniuse.com/wasm-threads',
+            'WebAssembly SIMD': 'https://caniuse.com/wasm-simd',
+            'WebAssembly Streaming': 'https://caniuse.com/wasm',
+            
+            // Gaming APIs
+            'Gamepad API': 'https://caniuse.com/gamepad',
+            'Pointer Lock API': 'https://caniuse.com/pointerlock',
+            'Fullscreen API': 'https://caniuse.com/fullscreen',
+            'Screen Orientation API': 'https://caniuse.com/screen-orientation',
+            'Wake Lock API': 'https://caniuse.com/wake-lock',
+            'Keyboard Lock API': 'https://caniuse.com/?search=keyboard%20lock',
+            'Vibration API': 'https://caniuse.com/vibration',
+            
+            // Communication
+            'WebSocket API': 'https://caniuse.com/websockets',
+            'WebRTC API': 'https://caniuse.com/rtcpeerconnection',
+            'WebRTC Data Channels': 'https://caniuse.com/rtcdatachannel',
+            'Server-Sent Events': 'https://caniuse.com/eventsource',
+            'Fetch API': 'https://caniuse.com/fetch',
+            
+            // Performance
+            'Performance API': 'https://caniuse.com/nav-timing',
+            'Performance Observer': 'https://caniuse.com/mdn-api_performanceobserver',
+            'Intersection Observer': 'https://caniuse.com/intersectionobserver',
+            'Resize Observer': 'https://caniuse.com/resizeobserver',
+            'Web Workers': 'https://caniuse.com/webworkers',
+            'SharedArrayBuffer': 'https://caniuse.com/sharedarraybuffer',
+            
+            // Audio
+            'Web Audio API': 'https://caniuse.com/audio-api',
+            'Audio Context': 'https://caniuse.com/audio-api',
+            
+            // Storage
+            'IndexedDB': 'https://caniuse.com/indexeddb',
+            'localStorage': 'https://caniuse.com/namevalue-storage',
+            
+            // Device APIs
+            'Device Motion API': 'https://caniuse.com/deviceorientation',
+            'Geolocation API': 'https://caniuse.com/geolocation'
+        };
+        
+        // Return the specific URL or a search URL if not found
+        return caniuseMap[testName] || `https://caniuse.com/?search=${encodeURIComponent(testName)}`;
+    }
+
+    /**
      * Update compatibility status message based on score
      */
     updateCompatibilityStatus(score, errorCount, unsupportedCount) {
@@ -644,37 +932,61 @@ class TestingInterface {
     getImprovementGuidance(issue) {
         const guidanceMap = {
             // Graphics & WebGL
-            'WebGL Context': 'Enable hardware acceleration in your browser settings. For Chrome: chrome://settings/system → "Use hardware acceleration when available"',
-            'WebGL Extensions': 'Update your graphics drivers. Visit your GPU manufacturer\'s website (NVIDIA, AMD, Intel) for the latest drivers.',
-            'Canvas API': 'This is a core web standard. Consider updating your browser to a newer version.',
+            'WebGL Context': 'Enable hardware acceleration: Chrome → Settings → System → "Use hardware acceleration". Firefox → Settings → Performance → Uncheck "Use recommended" → Check "Use hardware acceleration"',
+            'WebGL 2.0': 'WebGL 2.0 requires a modern browser and graphics drivers. Update both your browser and GPU drivers (NVIDIA/AMD/Intel).',
+            'WebGL Extensions': 'Graphics driver update needed. Visit your GPU manufacturer website: NVIDIA (nvidia.com/drivers), AMD (amd.com/support), or Intel (intel.com/content/www/us/en/support)',
+            'Canvas API': 'Canvas is universally supported. If failing, check: 1) Browser extensions blocking canvas fingerprinting, 2) Privacy settings, 3) Hardware acceleration',
+            'OffscreenCanvas': 'Requires Chrome 69+, Firefox 105+, or Safari 16.4+. Update your browser or use a different browser for this feature.',
+            
+            // WebGPU
+            'WebGPU Support': 'WebGPU is experimental. Enable in Chrome: chrome://flags/#enable-unsafe-webgpu. Firefox: about:config → dom.webgpu.enabled. Not yet supported in Safari.',
+            'WebGPU Adapter': 'WebGPU requires modern GPU hardware and drivers. Update your graphics drivers and ensure WebGPU is enabled in browser flags.',
+            'WebGPU Device': 'WebGPU device creation requires compatible hardware. Check GPU compatibility and ensure WebGPU flags are enabled.',
+            
+            // WebAssembly
+            'WebAssembly Support': 'WebAssembly is supported in all modern browsers. Requires Chrome 57+, Firefox 52+, Safari 11+, or Edge 16+.',
+            'WebAssembly Threads': 'Requires SharedArrayBuffer support. Enable COOP/COEP headers on your server or check browser security settings.',
+            'WebAssembly SIMD': 'SIMD requires Chrome 91+, Firefox 89+, or Safari 16.4+. Update your browser for SIMD support.',
+            'WebAssembly Streaming': 'Streaming compilation requires proper MIME type (application/wasm) and CORS headers if loading cross-origin.',
             
             // Audio
-            'Web Audio API': 'Update your browser to a newer version. Web Audio API is supported in all modern browsers.',
-            'Audio Context': 'Check if audio is blocked by your browser\'s autoplay policy. Try interacting with the page first.',
+            'Web Audio API': 'Web Audio is widely supported. If failing: 1) Check browser autoplay policies, 2) Ensure page has user interaction, 3) Check audio permissions',
+            'Audio Context': 'AudioContext may be blocked by autoplay policies. Ensure user interaction (click/tap) before creating audio context.',
             
             // Communication
-            'WebSocket API': 'Check your network configuration and firewall settings. WebSockets may be blocked by corporate networks.',
-            'WebRTC API': 'Enable camera/microphone permissions if prompted. Some features require HTTPS connection.',
-            
-            // Storage
-            'IndexedDB': 'Clear browser storage if full. Check browser privacy settings - private/incognito mode may disable IndexedDB.',
-            'localStorage API': 'Disable private browsing mode. Check if third-party cookies are enabled.',
+            'WebSocket API': 'WebSockets may be blocked by: 1) Firewall/proxy settings, 2) Browser extensions, 3) Corporate network policies. Try disabling extensions.',
+            'WebRTC API': 'WebRTC requires: 1) HTTPS connection (or localhost), 2) Camera/microphone permissions, 3) Not blocked by extensions',
+            'WebRTC Data Channels': 'Data channels require WebRTC support. Check firewall settings for STUN/TURN servers and ensure WebRTC is not disabled.',
+            'Server-Sent Events': 'SSE is widely supported. Check: 1) Network proxy settings, 2) Browser extensions blocking connections, 3) CORS policies',
+            'Fetch API': 'Fetch is standard in modern browsers. Requires Chrome 42+, Firefox 39+, Safari 10.1+, or Edge 14+.',
             
             // Performance
-            'Web Workers': 'Update your browser. Web Workers are supported in all modern browsers since 2010.',
-            'SharedArrayBuffer': 'This requires HTTPS and special security headers. SharedArrayBuffer was disabled in some browsers due to Spectre vulnerabilities.',
+            'Performance API': 'Performance API is core to modern browsers. If failing, check privacy extensions that might block timing APIs.',
+            'Performance Observer': 'Requires Chrome 52+, Firefox 57+, or Safari 15+. Update your browser for PerformanceObserver support.',
+            'Intersection Observer': 'Requires Chrome 51+, Firefox 55+, Safari 12.1+, or Edge 15+. Widely supported - update if needed.',
+            'Resize Observer': 'Requires Chrome 64+, Firefox 69+, Safari 13.1+, or Edge 79+. Update browser for ResizeObserver support.',
+            'Web Workers': 'Web Workers are universally supported. If failing: 1) Check Content Security Policy, 2) Ensure not in file:// protocol',
+            'SharedArrayBuffer': 'Requires COOP/COEP headers: Cross-Origin-Opener-Policy: same-origin, Cross-Origin-Embedder-Policy: require-corp',
             
             // Gaming specific
-            'Gamepad API': 'Connect a gamepad and try again. The Gamepad API only detects controllers when they\'re actively connected.',
-            'Pointer Lock API': 'This requires user interaction. Click on the page and try again.',
-            'Fullscreen API': 'This requires user interaction. Some browsers block fullscreen in certain contexts.',
+            'Gamepad API': 'Gamepad API requires: 1) Physical gamepad connected, 2) User interaction to activate, 3) Not all browsers support all controllers',
+            'Pointer Lock API': 'Pointer Lock requires: 1) User gesture (click), 2) Fullscreen may be required in some browsers, 3) HTTPS connection',
+            'Fullscreen API': 'Fullscreen requires: 1) User gesture (click/key), 2) Not blocked by iframe sandboxing, 3) Proper permissions',
+            'Screen Orientation API': 'Orientation lock requires: 1) Fullscreen mode on mobile, 2) HTTPS connection, 3) Mobile device or responsive mode',
+            'Wake Lock API': 'Wake Lock requires: 1) HTTPS connection, 2) Chrome 84+, Edge 84+, Safari 16.4+ (no Firefox support yet)',
+            'Keyboard Lock API': 'Keyboard Lock is experimental. Chrome 68+ with fullscreen. Enable chrome://flags/#enable-experimental-web-platform-features',
+            'Vibration API': 'Vibration requires: 1) Mobile device with vibration hardware, 2) User interaction, 3) Not in silent/vibrate mode',
+            
+            // Storage
+            'IndexedDB': 'IndexedDB issues: 1) Private/incognito mode may limit storage, 2) Storage quota exceeded, 3) Browser storage settings',
+            'localStorage': 'localStorage blocked by: 1) Private browsing mode, 2) Third-party cookie blocking, 3) Storage quota exceeded',
             
             // Device
-            'Device Motion API': 'Enable motion sensors in browser settings. This feature requires HTTPS on many browsers.',
-            'Geolocation API': 'Enable location permissions when prompted. Check browser privacy settings.',
+            'Device Motion API': 'Motion APIs require: 1) Mobile device or laptop with sensors, 2) HTTPS connection, 3) iOS 13+ requires permission',
+            'Geolocation API': 'Geolocation requires: 1) User permission grant, 2) HTTPS connection (or localhost), 3) Location services enabled',
             
             // Default guidance
-            'default': 'Update your browser to the latest version. This feature may not be supported in older browsers.'
+            'default': 'Check browser compatibility at caniuse.com. Ensure: 1) Browser is updated, 2) Hardware acceleration enabled, 3) Privacy settings allow feature'
         };
 
         return guidanceMap[issue.name] || guidanceMap['default'];
@@ -789,6 +1101,93 @@ class TestingInterface {
             window.showNotification(message, type);
         } else {
             console.log(`${type.toUpperCase()}: ${message}`);
+        }
+    }
+
+    /**
+     * Update browser info with real-time version checking
+     */
+    async updateBrowserInfo() {
+        try {
+            const browserInfoBar = document.querySelector('.browser-info-bar');
+            if (!browserInfoBar) return;
+
+            const ua = navigator.userAgent;
+            let name = 'Unknown';
+            let version = '';
+            let iconPath = 'assets/browser-icons/unknown.svg';
+            let engine = '';
+            let browserKey = '';
+
+            // Detect browser and version
+            if (ua.indexOf('Edg/') > -1) {
+                name = 'Microsoft Edge';
+                version = ua.match(/Edg\/(\d+\.\d+)/)?.[1] || '';
+                iconPath = 'assets/browser-icons/edge.svg';
+                engine = 'Chromium';
+                browserKey = 'edge';
+            } else if (ua.indexOf('Chrome') > -1 && ua.indexOf('Edg') === -1) {
+                name = 'Chrome';
+                version = ua.match(/Chrome\/(\d+\.\d+)/)?.[1] || '';
+                iconPath = 'assets/browser-icons/chrome.svg';
+                engine = 'Chromium';
+                browserKey = 'chrome';
+            } else if (ua.indexOf('Safari') > -1 && ua.indexOf('Chrome') === -1) {
+                name = 'Safari';
+                version = ua.match(/Version\/(\d+\.\d+)/)?.[1] || '';
+                iconPath = 'assets/browser-icons/safari.svg';
+                engine = 'WebKit';
+                browserKey = 'safari';
+            } else if (ua.indexOf('Firefox') > -1) {
+                name = 'Firefox';
+                version = ua.match(/Firefox\/(\d+\.\d+)/)?.[1] || '';
+                iconPath = 'assets/browser-icons/firefox.svg';
+                engine = 'Gecko';
+                browserKey = 'firefox';
+            } else if (ua.indexOf('Opera') > -1 || ua.indexOf('OPR') > -1) {
+                name = 'Opera';
+                version = ua.match(/(?:Opera|OPR)\/(\d+\.\d+)/)?.[1] || '';
+                iconPath = 'assets/browser-icons/opera.svg';
+                engine = 'Chromium';
+                browserKey = 'opera';
+            } else if (ua.indexOf('Brave') > -1) {
+                name = 'Brave';
+                version = ua.match(/Brave\/(\d+\.\d+)/)?.[1] || '';
+                iconPath = 'assets/browser-icons/brave.svg';
+                engine = 'Chromium';
+                browserKey = 'chrome';
+            } else if (ua.indexOf('Vivaldi') > -1) {
+                name = 'Vivaldi';
+                version = ua.match(/Vivaldi\/(\d+\.\d+)/)?.[1] || '';
+                iconPath = 'assets/browser-icons/vivaldi.svg';
+                engine = 'Chromium';
+                browserKey = 'chrome';
+            } else if (ua.indexOf('DuckDuckGo') > -1) {
+                name = 'DuckDuckGo';
+                version = ua.match(/DuckDuckGo\/(\d+\.\d+)/)?.[1] || '';
+                iconPath = 'assets/browser-icons/duckduckgo.svg';
+                engine = 'WebKit';
+                browserKey = 'safari';
+            }
+
+            // Load the SVG icon
+            const icon = await this.loadBrowserIcon(iconPath);
+
+            // Check if browser is up to date using caniuse data
+            const updateStatus = await this.checkBrowserUpdateStatus(browserKey, version);
+
+            // Update the browser info bar
+            browserInfoBar.innerHTML = `
+                <div class="browser-icon">${icon}</div>
+                <div class="browser-details">
+                    <span class="browser-name">${name} ${version}</span>
+                    <span class="browser-engine">${engine ? `(${engine})` : ''}</span>
+                    ${updateStatus.badge}
+                </div>
+            `;
+
+        } catch (error) {
+            console.warn('Failed to update browser info:', error);
         }
     }
 }

@@ -66,11 +66,11 @@ class CompatibilityTestApp {
             const summary = this.browserDetector.getSummary();
             console.log(`🌐 Detected: ${summary}`);
 
-            // Check for immediate compatibility issues
+            // Check for immediate compatibility issues (saved for after testing)
             const issues = this.browserDetector.detectPotentialIssues();
             if (issues.length > 0) {
                 console.warn('⚠️ Potential compatibility issues detected:', issues);
-                this.showCompatibilityWarnings(issues);
+                // Note: Compatibility warnings will be shown after testing is complete
             }
             
         } catch (error) {
@@ -95,16 +95,8 @@ class CompatibilityTestApp {
      * Update online/offline status indicator
      */
     updateOnlineStatus() {
-        const indicator = document.getElementById('offline-status');
-        if (indicator) {
-            if (navigator.onLine) {
-                indicator.textContent = 'Online';
-                indicator.removeAttribute('data-offline');
-            } else {
-                indicator.textContent = 'Offline';
-                indicator.setAttribute('data-offline', 'true');
-            }
-        }
+        // Online indicator removed from UI
+        // Status checking still available via navigator.onLine
     }
 
     /**
@@ -256,7 +248,7 @@ class CompatibilityTestApp {
             }
             
             // Show the testing interface
-            window.testingInterface.show();
+            await window.testingInterface.show();
             
             // Update current view
             this.navigateToView('testing');

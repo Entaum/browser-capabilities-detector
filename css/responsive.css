@@ -1,5 +1,37 @@
 /* Responsive Styles */
 
+/* Mobile responsive - start with 1 column */
+.preview-grid {
+  grid-template-columns: 1fr;
+}
+
+/* Safari-specific mobile fixes */
+@supports (-webkit-appearance: none) {
+  .preview-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+  
+  .preview-item {
+    width: 100%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    min-width: 0;
+  }
+  
+  /* Fix text wrapping issues in Safari */
+  .browser-name,
+  .browser-engine,
+  .compatibility-status,
+  .final-score-breakdown {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+}
+
 /* Mobile First Approach */
 
 /* Small Mobile (320px+) - Default styles above */
@@ -16,7 +48,7 @@
   }
   
   .preview-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -35,7 +67,7 @@
   }
   
   .spawnd-header {
-    padding: var(--spacing-xl) 0;
+    padding: calc(var(--spacing-xl) / 2) 0;
   }
   
   .hero-section {
@@ -57,6 +89,7 @@
   }
   
   .preview-grid {
+    grid-template-columns: repeat(4, 1fr);
     gap: var(--spacing-lg);
   }
   
