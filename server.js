@@ -37,15 +37,6 @@ const server = http.createServer((req, res) => {
     const parsedUrl = url.parse(req.url);
     let pathname = parsedUrl.pathname;
     
-    // Handle root request
-    if (pathname === '/') {
-        pathname = '/index.html';
-    }
-    
-    const filePath = path.join(__dirname, pathname);
-    const ext = path.extname(filePath).toLowerCase();
-    const contentType = mimeTypes[ext] || 'application/octet-stream';
-    
     // Security headers
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
@@ -56,17 +47,53 @@ const server = http.createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     
-    // Service Worker headers
-    if (pathname === '/sw.js') {
-        res.setHeader('Service-Worker-Allowed', '/');
-        res.setHeader('Cache-Control', 'no-cache');
-    }
-    
     // Handle OPTIONS preflight requests
     if (req.method === 'OPTIONS') {
         res.writeHead(200);
         res.end();
         return;
+    }
+    
+    // Proxy endpoint for caniuse.com API to avoid CORS issues
+    if (pathname === '/api/caniuse/browser-versions') {
+        const https = require('https');
+        https.get('https://caniuse.com/api/browser-versions', (proxyRes) => {
+            // Check if response is successful and is JSON
+            if (proxyRes.statusCode === 200 && proxyRes.headers['content-type']?.includes('application/json')) {
+                res.writeHead(200, {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'public, max-age=3600' // Cache for 1 hour
+                });
+                proxyRes.pipe(res);
+            } else {
+                // Return error response if not valid JSON
+                res.writeHead(503, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Service unavailable' }));
+            }
+        }).on('error', (error) => {
+            // Only log unexpected errors (not network timeouts)
+            if (error.code !== 'ECONNREFUSED' && error.code !== 'ETIMEDOUT') {
+                console.error('❌ Proxy error:', error);
+            }
+            res.writeHead(503, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Service unavailable' }));
+        });
+        return;
+    }
+    
+    // Handle root request
+    if (pathname === '/') {
+        pathname = '/index.html';
+    }
+    
+    const filePath = path.join(__dirname, pathname);
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+    
+    // Service Worker headers
+    if (pathname === '/sw.js') {
+        res.setHeader('Service-Worker-Allowed', '/');
+        res.setHeader('Cache-Control', 'no-cache');
     }
     
     // Check if file exists
@@ -129,10 +156,11 @@ server.listen(PORT, HOST, () => {
     console.log(`📱 Network:   http://${getNetworkIP()}:${PORT}/`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📋 Available endpoints:');
-    console.log('   /           - Main application');
-    console.log('   /sw.js      - Service Worker');
-    console.log('   /css/       - Stylesheets');
-    console.log('   /js/        - JavaScript files');
+    console.log('   /                              - Main application');
+    console.log('   /sw.js                         - Service Worker');
+    console.log('   /api/caniuse/browser-versions  - Proxy for caniuse.com API');
+    console.log('   /css/                          - Stylesheets');
+    console.log('   /js/                           - JavaScript files');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('💡 Press Ctrl+C to stop the server');
 });

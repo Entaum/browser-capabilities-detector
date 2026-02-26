@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Capability Admin - Spawnd</title>
+    <meta name="description" content="Admin interface for configuring browser compatibility tests">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/admin.css">
+    
+    <!-- TipTap Editor Dependencies (commented out until editors are implemented) -->
+    <!-- <script src="https://unpkg.com/@tiptap/core@2.1.13/dist/index.umd.js"></script> -->
+    <!-- <script src="https://unpkg.com/@tiptap/starter-kit@2.1.13/dist/index.umd.js"></script> -->
+    <!-- <script src="https://unpkg.com/@tiptap/extension-placeholder@2.1.13/dist/index.umd.js"></script> -->
+    
+    <!-- Marked for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Semver for version range parsing (using browser-compatible version) -->
+    <script src="https://cdn.jsdelivr.net/npm/semver@7.5.4/browser/semver.min.js"></script>
+</head>
+<body>
+    <div id="admin-app">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="spawnd_logo_playon.png" alt="Spawnd" class="admin-logo">
+                    <h1>Browser Capability Admin</h1>
+                </div>
+                <div class="header-actions">
+                    <button id="save-btn" class="btn btn-secondary">
+                        <span class="icon">💾</span> Save
+                    </button>
+                    <button id="export-btn" class="btn btn-primary">
+                        <span class="icon">📦</span> Export DB
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Layout -->
+        <div class="admin-layout">
+            <!-- Sidebar Navigation -->
+            <nav class="admin-sidebar">
+                <ul class="nav-menu">
+                    <li class="nav-item active" data-section="browsers">
+                        <span class="nav-icon">🌐</span>
+                        <span class="nav-label">Browsers</span>
+                        <span class="nav-count" id="browsers-count">0</span>
+                    </li>
+                    <li class="nav-item" data-section="tests">
+                        <span class="nav-icon">🧪</span>
+                        <span class="nav-label">Tests</span>
+                        <span class="nav-count" id="tests-count">0</span>
+                    </li>
+                    <li class="nav-item" data-section="solutions">
+                        <span class="nav-icon">💡</span>
+                        <span class="nav-label">Solutions</span>
+                        <span class="nav-count" id="solutions-count">0</span>
+                    </li>
+                    <li class="nav-item" data-section="snippets">
+                        <span class="nav-icon">📝</span>
+                        <span class="nav-label">Snippets</span>
+                        <span class="nav-count" id="snippets-count">0</span>
+                    </li>
+                    <li class="nav-item" data-section="i18n">
+                        <span class="nav-icon">🌍</span>
+                        <span class="nav-label">i18n</span>
+                        <span class="nav-status" id="i18n-status"></span>
+                    </li>
+                    <li class="nav-item" data-section="settings">
+                        <span class="nav-icon">⚙️</span>
+                        <span class="nav-label">Settings</span>
+                    </li>
+                    <li class="nav-item" data-section="validate">
+                        <span class="nav-icon">✅</span>
+                        <span class="nav-label">Validate & Export</span>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Content Area -->
+            <main class="admin-content">
+                <!-- Browsers Section -->
+                <section id="browsers-section" class="content-section active">
+                    <div class="section-header">
+                        <h2>Browsers</h2>
+                        <button id="add-browser-btn" class="btn btn-primary">
+                            <span class="icon">➕</span> Add Browser
+                        </button>
+                    </div>
+                    <div class="section-controls">
+                        <input type="text" id="browsers-search" class="search-input" placeholder="Search browsers...">
+                    </div>
+                    <div id="browsers-list" class="data-table"></div>
+                </section>
+
+                <!-- Tests Section -->
+                <section id="tests-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Tests</h2>
+                        <button id="add-test-btn" class="btn btn-primary">
+                            <span class="icon">➕</span> Add Test
+                        </button>
+                    </div>
+                    <div class="section-controls">
+                        <input type="text" id="tests-search" class="search-input" placeholder="Search tests...">
+                        <select id="tests-category-filter" class="filter-select">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                    <div id="tests-grid" class="data-grid"></div>
+                </section>
+
+                <!-- Solutions Section -->
+                <section id="solutions-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Solutions</h2>
+                        <button id="add-solution-btn" class="btn btn-primary">
+                            <span class="icon">➕</span> Add Solution
+                        </button>
+                    </div>
+                    <div class="section-controls">
+                        <input type="text" id="solutions-search" class="search-input" placeholder="Search solutions...">
+                        <select id="solutions-scope-filter" class="filter-select">
+                            <option value="">All Scopes</option>
+                            <option value="generic">Generic</option>
+                            <option value="browser">Browser-specific</option>
+                            <option value="browserVersion">Version-specific</option>
+                        </select>
+                        <select id="solutions-browser-filter" class="filter-select">
+                            <option value="">All Browsers</option>
+                        </select>
+                    </div>
+                    <div id="solutions-list" class="data-table"></div>
+                </section>
+
+                <!-- Snippets Section -->
+                <section id="snippets-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Snippet Library</h2>
+                        <button id="add-snippet-btn" class="btn btn-primary">
+                            <span class="icon">➕</span> Add Snippet
+                        </button>
+                    </div>
+                    <div class="section-controls">
+                        <input type="text" id="snippets-search" class="search-input" placeholder="Search snippets...">
+                        <select id="snippets-target-filter" class="filter-select">
+                            <option value="">All Targets</option>
+                        </select>
+                    </div>
+                    <div id="snippets-list" class="data-list"></div>
+                </section>
+
+                <!-- i18n Section -->
+                <section id="i18n-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Internationalization</h2>
+                        <button id="add-locale-btn" class="btn btn-primary">
+                            <span class="icon">➕</span> Add Locale
+                        </button>
+                    </div>
+                    <div class="i18n-dashboard">
+                        <div class="locale-settings">
+                            <h3>Locale Settings</h3>
+                            <div class="form-group">
+                                <label>Default Locale:</label>
+                                <select id="default-locale-select"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Supported Locales:</label>
+                                <div id="supported-locales-list"></div>
+                            </div>
+                        </div>
+                        <div class="translation-status">
+                            <h3>Translation Status</h3>
+                            <div id="translation-dashboard"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Settings Section -->
+                <section id="settings-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Settings</h2>
+                    </div>
+                    <div class="settings-panel">
+                        <div class="setting-group">
+                            <h3>Database Settings</h3>
+                            <div class="form-group">
+                                <label>Schema Version:</label>
+                                <input type="number" id="schema-version" value="1" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label>Database Version:</label>
+                                <input type="text" id="db-version" placeholder="1.0.0">
+                            </div>
+                            <div class="form-group">
+                                <label>Notes:</label>
+                                <textarea id="db-notes" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <h3>Auto-save</h3>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="autosave-enabled" checked>
+                                    Enable auto-save to IndexedDB
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>Auto-save interval (seconds):</label>
+                                <input type="number" id="autosave-interval" value="30" min="10">
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <h3>Data Migration</h3>
+                            <div class="form-group">
+                                <button id="migrate-data-btn" class="btn btn-secondary">
+                                    <span class="icon">📥</span> Load Sample Data from Tests
+                                </button>
+                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0.5rem 0 0 0;">
+                                    Populates the database with browsers and tests from your existing test suite.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Validate & Export Section -->
+                <section id="validate-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Validate & Export</h2>
+                    </div>
+                    <div class="validation-panel">
+                        <div class="validation-controls">
+                            <button id="validate-btn" class="btn btn-secondary">
+                                <span class="icon">🔍</span> Run Validation
+                            </button>
+                        </div>
+                        <div id="validation-results" class="validation-results"></div>
+                    </div>
+                    <div class="export-panel">
+                        <h3>Export Options</h3>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="export-inline-snippets">
+                                Inline snippets in content
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="export-embed-icons" checked>
+                                Embed icons as data URLs
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="export-minify">
+                                Minify JSON output
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="export-checksum" checked>
+                                Include checksum
+                            </label>
+                        </div>
+                        <div class="export-actions">
+                            <button id="export-json-btn" class="btn btn-primary">
+                                <span class="icon">💾</span> Export as JSON
+                            </button>
+                            <button id="preview-json-btn" class="btn btn-secondary">
+                                <span class="icon">👁️</span> Preview JSON
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Modal Container -->
+        <div id="modal-container"></div>
+
+        <!-- Toast Container -->
+        <div id="toast-container"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/admin/db.js"></script>
+    <script src="js/admin/models.js"></script>
+    <script src="js/admin/ui.js"></script>
+    <script src="js/admin/browsers.js"></script>
+    <script src="js/admin/tests.js"></script>
+    <script src="js/admin/main.js"></script>
+    
+    <!-- Test Classes for Migration -->
+    <script src="js/api-tests/webgl-tests.js"></script>
+    <script src="js/api-tests/webgpu-tests.js"></script>
+    <script src="js/api-tests/webassembly-tests.js"></script>
+    <script src="js/api-tests/gaming-apis-tests.js"></script>
+    <script src="js/api-tests/communication-tests.js"></script>
+    <script src="js/api-tests/performance-tests.js"></script>
+    
+    <!-- Migration Script -->
+    <script src="js/admin/migrate-data.js"></script>
+</body>
+</html>

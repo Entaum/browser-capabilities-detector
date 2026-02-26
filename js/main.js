@@ -109,18 +109,39 @@ class CompatibilityTestApp {
             // Create warning banner
             const banner = document.createElement('div');
             banner.className = 'compatibility-warning';
-            banner.innerHTML = `
-                <div class="warning-content">
-                    <div class="warning-icon">⚠️</div>
-                    <div class="warning-text">
-                        <h3>Compatibility Issues Detected</h3>
-                        <ul>
-                            ${criticalIssues.map(issue => `<li>${issue.message}</li>`).join('')}
-                        </ul>
-                    </div>
-                    <button class="warning-close" onclick="this.parentElement.parentElement.remove()">×</button>
-                </div>
-            `;
+            
+            const content = document.createElement('div');
+            content.className = 'warning-content';
+            
+            const icon = document.createElement('div');
+            icon.className = 'warning-icon';
+            icon.textContent = '⚠️';
+            
+            const text = document.createElement('div');
+            text.className = 'warning-text';
+            
+            const h3 = document.createElement('h3');
+            h3.textContent = 'Compatibility Issues Detected';
+            
+            const ul = document.createElement('ul');
+            criticalIssues.forEach(issue => {
+                const li = document.createElement('li');
+                li.textContent = issue.message;
+                ul.appendChild(li);
+            });
+            
+            text.appendChild(h3);
+            text.appendChild(ul);
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'warning-close';
+            closeBtn.textContent = '×';
+            closeBtn.onclick = () => banner.remove();
+            
+            content.appendChild(icon);
+            content.appendChild(text);
+            content.appendChild(closeBtn);
+            banner.appendChild(content);
             
             // Add styles for the warning banner
             if (!document.getElementById('warning-styles')) {
@@ -206,8 +227,8 @@ class CompatibilityTestApp {
 
             const requirements = this.browserDetector.checkMinimumRequirements();
             if (!requirements.supported) {
-                this.showError(`Your browser is not supported: ${requirements.reason}`);
-                return;
+                console.warn(`⚠️ Browser compatibility warning: ${requirements.reason}`);
+                // Note: Proceeding with test anyway - let the individual tests determine compatibility
             }
 
             // Add loading state to button
@@ -291,13 +312,34 @@ class CompatibilityTestApp {
         // Create success notification
         const notification = document.createElement('div');
         notification.className = 'success-notification';
-        notification.innerHTML = `
-            <div class="notification-content">
-                <div class="notification-icon">✅</div>
-                <div class="notification-text">${message.replace(/\n/g, '<br>')}</div>
-                <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
-            </div>
-        `;
+        
+        const content = document.createElement('div');
+        content.className = 'notification-content';
+        
+        const icon = document.createElement('div');
+        icon.className = 'notification-icon';
+        icon.textContent = '✅';
+        
+        const text = document.createElement('div');
+        text.className = 'notification-text';
+        // Handle newlines by splitting and creating <br> elements
+        const lines = message.split('\n');
+        lines.forEach((line, index) => {
+            if (index > 0) {
+                text.appendChild(document.createElement('br'));
+            }
+            text.appendChild(document.createTextNode(line));
+        });
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'notification-close';
+        closeBtn.textContent = '×';
+        closeBtn.onclick = () => notification.remove();
+        
+        content.appendChild(icon);
+        content.appendChild(text);
+        content.appendChild(closeBtn);
+        notification.appendChild(content);
         
         this.addNotificationStyles();
         document.body.appendChild(notification);
@@ -317,13 +359,27 @@ class CompatibilityTestApp {
         // Create error notification
         const notification = document.createElement('div');
         notification.className = 'error-notification';
-        notification.innerHTML = `
-            <div class="notification-content">
-                <div class="notification-icon">❌</div>
-                <div class="notification-text">${message}</div>
-                <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
-            </div>
-        `;
+        
+        const content = document.createElement('div');
+        content.className = 'notification-content';
+        
+        const icon = document.createElement('div');
+        icon.className = 'notification-icon';
+        icon.textContent = '❌';
+        
+        const text = document.createElement('div');
+        text.className = 'notification-text';
+        text.textContent = message;
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'notification-close';
+        closeBtn.textContent = '×';
+        closeBtn.onclick = () => notification.remove();
+        
+        content.appendChild(icon);
+        content.appendChild(text);
+        content.appendChild(closeBtn);
+        notification.appendChild(content);
         
         this.addNotificationStyles();
         

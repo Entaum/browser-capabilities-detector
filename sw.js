@@ -180,7 +180,16 @@ async function handleCacheFirst(request) {
 async function handleNetworkFirst(request) {
     try {
         console.log('🌐 Network-first request:', request.url);
-        const networkResponse = await fetch(request, { timeout: 5000 });
+        
+        // Use AbortController for timeout (fetch doesn't support timeout option)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const networkResponse = await fetch(request, { 
+            signal: controller.signal 
+        });
+        
+        clearTimeout(timeoutId);
         
         // Cache successful responses
         if (networkResponse.status === 200) {
@@ -192,7 +201,12 @@ async function handleNetworkFirst(request) {
         return networkResponse;
         
     } catch (error) {
-        console.log('📋 Network failed, trying cache:', request.url);
+        // Check if error was due to abort (timeout)
+        if (error.name === 'AbortError') {
+            console.log('⏱️ Request timeout, trying cache:', request.url);
+        } else {
+            console.log('📋 Network failed, trying cache:', request.url);
+        }
         
         // Try cache as fallback
         const cache = await caches.open(CACHE_NAME);
@@ -220,11 +234,37 @@ async function handleNetworkFirst(request) {
  */
 async function handleNetworkOnly(request) {
     try {
-        console.log('🌐 Network-only request:', request.url);
-        return await fetch(request);
+        // Suppress console logs for external API requests that commonly fail
+        const isExternalAPI = request.url.includes('caniuse.com') || 
+                             request.url.includes('websocket') ||
+                             request.url.includes('webrtc');
+        
+        if (!isExternalAPI) {
+            console.log('🌐 Network-only request:', request.url);
+        }
+        
+        const response = await fetch(request);
+        
+        // Check for CORS or network errors
+        if (!response.ok && response.status === 503) {
+            // Service unavailable - expected for some external APIs
+            throw new Error('Service unavailable');
+        }
+        
+        return response;
         
     } catch (error) {
-        console.log('❌ Network-only request failed:', request.url);
+        // Suppress console errors for expected failures (CORS, network issues)
+        const isExpectedFailure = request.url.includes('caniuse.com') || 
+                                  request.url.includes('websocket') ||
+                                  request.url.includes('webrtc') ||
+                                  error.name === 'TypeError' ||
+                                  error.message.includes('CORS') ||
+                                  error.message.includes('Failed to fetch');
+        
+        if (!isExpectedFailure) {
+            console.log('❌ Network-only request failed:', request.url);
+        }
         
         // Return specific offline responses for different types
         if (request.url.includes('websocket') || request.url.includes('webrtc')) {

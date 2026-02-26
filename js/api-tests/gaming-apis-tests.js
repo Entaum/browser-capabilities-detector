@@ -236,11 +236,22 @@ class GamingAPIsTests {
                 panner.disconnect();
             } catch (e) {}
 
+            // ScriptProcessorNode is deprecated - prefer AudioWorkletNode
+            // Only test if AudioWorklet is not available (for older browsers)
             try {
-                const scriptProcessor = audioContext.createScriptProcessor(256, 1, 1);
-                nodeTests.scriptProcessor = !!scriptProcessor;
-                scriptProcessor.disconnect();
-            } catch (e) {}
+                if (!audioContext.audioWorklet) {
+                    // Suppress deprecation warning by checking availability first
+                    const scriptProcessor = audioContext.createScriptProcessor(256, 1, 1);
+                    nodeTests.scriptProcessor = !!scriptProcessor;
+                    scriptProcessor.disconnect();
+                } else {
+                    // AudioWorklet is available, mark scriptProcessor as not needed
+                    nodeTests.scriptProcessor = false;
+                }
+            } catch (e) {
+                // ScriptProcessorNode may not be available or may throw deprecation warning
+                // This is expected in modern browsers
+            }
 
             try {
                 nodeTests.audioWorklet = !!audioContext.audioWorklet;

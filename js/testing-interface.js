@@ -602,62 +602,80 @@ class TestingInterface {
      * Get browser information including icon and update status
      */
     getBrowserInfo() {
+        // First try to use the main browser detector if available
+        if (window.compatibilityApp && window.compatibilityApp.browserDetector) {
+            const detector = window.compatibilityApp.browserDetector;
+            const browserInfo = detector.browserInfo;
+            const name = browserInfo.name || 'Unknown';
+            const version = browserInfo.version || '0';
+            const engine = browserInfo.engine || 'Unknown';
+            
+            const icon = this.getBrowserIcon(name);
+            const browserKey = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const updateStatus = this.checkBrowserUpdateFallback(browserKey, version);
+            const updateBadge = updateStatus.badge;
+            
+            return {
+                name,
+                version,
+                icon,
+                engine: engine ? `(${engine})` : '',
+                updateBadge
+            };
+        }
+        
+        // Fallback to manual detection if BrowserDetector not available
         const ua = navigator.userAgent;
         let name = 'Unknown';
         let version = '';
-        let icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#6b7280"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="white" stroke-width="1" fill="none"/></svg>';
         let engine = '';
         
-        // Detect browser and version
-        if (ua.indexOf('Edg/') > -1) {
-            name = 'Microsoft Edge';
-            version = ua.match(/Edg\/(\d+\.\d+)/)?.[1] || '';
-            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M21.86 7.84c-.32-1.96-1.08-3.74-2.21-5.27C18.44.86 16.82 0 15.04 0c-1.86 0-3.54.92-4.86 2.45-1.32-1.53-3-2.45-4.86-2.45C3.5 0 1.88.86.67 2.57-.46 4.1-1.22 5.88-1.54 7.84c-.18.96-.18 1.96 0 2.92.36 2.64 1.44 5.04 3.15 6.96 1.89 2.13 4.32 3.28 6.93 3.28s5.04-1.15 6.93-3.28c1.71-1.92 2.79-4.32 3.15-6.96.18-.96.18-1.96 0-2.92z" fill="#0078d4"/></svg>';
-            engine = 'Chromium';
-        } else if (ua.indexOf('Chrome') > -1 && ua.indexOf('Edg') === -1) {
-            name = 'Chrome';
-            version = ua.match(/Chrome\/(\d+\.\d+)/)?.[1] || '';
-            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="url(#chrome-gradient)"/><circle cx="12" cy="12" r="4" fill="#4285f4"/><path d="M12 2C8.13 2 4.79 4.24 3.11 7.5l4.33 7.5C8.59 16.65 10.13 17 12 17s3.41-.35 4.56-1l4.33-7.5C19.21 4.24 15.87 2 12 2z" fill="#ea4335"/><path d="M3.11 16.5C4.79 19.76 8.13 22 12 22s7.21-2.24 8.89-5.5l-4.33-7.5C15.41 7.35 13.87 7 12 7s-3.41.35-4.56 1L3.11 16.5z" fill="#34a853"/><defs><linearGradient id="chrome-gradient"><stop offset="0%" stop-color="#fdd663"/><stop offset="100%" stop-color="#f7931e"/></linearGradient></defs></svg>';
-            engine = 'Chromium';
-        } else if (ua.indexOf('Safari') > -1 && ua.indexOf('Chrome') === -1) {
-            name = 'Safari';
-            version = ua.match(/Version\/(\d+\.\d+)/)?.[1] || '';
-            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="url(#safari-gradient)"/><path d="M12 4l1.5 6.5L20 12l-6.5 1.5L12 20l-1.5-6.5L4 12l6.5-1.5L12 4z" fill="white" stroke="#0066cc" stroke-width="0.5"/><defs><linearGradient id="safari-gradient"><stop offset="0%" stop-color="#00aaff"/><stop offset="100%" stop-color="#0066cc"/></linearGradient></defs></svg>';
-            engine = 'WebKit';
-        } else if (ua.indexOf('Firefox') > -1) {
-            name = 'Firefox';
-            version = ua.match(/Firefox\/(\d+\.\d+)/)?.[1] || '';
-            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0z" fill="url(#firefox-gradient)"/><path d="M19.5 7.5c-1.5-3-4.5-5-8-5-3.5 0-6.5 2-8 5 0 0 2.5-2 5.5-2s5.5 2 5.5 2c1 0 1.5.5 1.5 1.5v3c0 1.5 1 2.5 2.5 2.5s2.5-1 2.5-2.5V7.5z" fill="#ff6611"/><defs><linearGradient id="firefox-gradient"><stop offset="0%" stop-color="#ff9500"/><stop offset="100%" stop-color="#ff6611"/></linearGradient></defs></svg>';
-            engine = 'Gecko';
-        } else if (ua.indexOf('Opera') > -1 || ua.indexOf('OPR') > -1) {
-            name = 'Opera';
-            version = ua.match(/(?:Opera|OPR)\/(\d+\.\d+)/)?.[1] || '';
-            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#ff1b2d"/><path d="M12 4c-2.21 0-4 3.58-4 8s1.79 8 4 8 4-3.58 4-8-1.79-8-4-8z" fill="white"/></svg>';
-            engine = 'Chromium';
-        } else if (ua.indexOf('Brave') > -1) {
-            name = 'Brave';
-            version = ua.match(/Brave\/(\d+\.\d+)/)?.[1] || '';
-            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 0L8 8h8l-4-8z" fill="#fb542b"/><path d="M4 8l8 4-8 12V8z" fill="#fb542b"/><path d="M20 8v16l-8-12 8-4z" fill="#fb542b"/><circle cx="12" cy="16" r="2" fill="white"/></svg>';
-            engine = 'Chromium';
-        } else if (ua.indexOf('Vivaldi') > -1) {
-            name = 'Vivaldi';
-            version = ua.match(/Vivaldi\/(\d+\.\d+)/)?.[1] || '';
-            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#ef3939"/><path d="M8 8h8v8H8z" fill="white"/><path d="M10 10h4v4h-4z" fill="#ef3939"/></svg>';
-            engine = 'Chromium';
-        } else if (ua.indexOf('Arc') > -1) {
-            name = 'Arc';
-            version = ua.match(/Arc\/(\d+\.\d+)/)?.[1] || '';
-            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="url(#arc-gradient)"/><path d="M12 6a6 6 0 0 1 6 6" stroke="white" stroke-width="2" fill="none"/><path d="M12 6a6 6 0 0 0-6 6" stroke="white" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="2" fill="white"/><defs><linearGradient id="arc-gradient"><stop offset="0%" stop-color="#ff6b6b"/><stop offset="100%" stop-color="#4ecdc4"/></linearGradient></defs></svg>';
-            engine = 'Chromium';
-        } else if (ua.indexOf('DuckDuckGo') > -1) {
-            name = 'DuckDuckGo';
-            version = ua.match(/DuckDuckGo\/(\d+\.\d+)/)?.[1] || '';
-            icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#de5833"/><path d="M8 10c0-2 2-4 4-4s4 2 4 4c0 1-1 2-2 2h-4c-1 0-2-1-2-2z" fill="white"/><circle cx="10" cy="9" r="1" fill="#de5833"/><circle cx="14" cy="9" r="1" fill="#de5833"/><path d="M12 14c-1 0-2-.5-2-1h4c0 .5-1 1-2 1z" fill="#de5833"/></svg>';
-            engine = 'WebKit';
+        // Try User-Agent Client Hints API first
+        const brandInfo = this.getBrowserBrandFromClientHints();
+        if (brandInfo.name && brandInfo.name !== 'Unknown') {
+            name = brandInfo.name;
+            version = brandInfo.version || this.extractVersionFromUA(ua, name);
+            engine = this.getEngineFromBrowser(name);
+        } else {
+            // Fallback to traditional UA parsing
+            if (ua.indexOf('Edg/') > -1) {
+                name = 'Microsoft Edge';
+                version = ua.match(/Edg\/(\d+\.\d+)/)?.[1] || '';
+                engine = 'Chromium';
+            } else if (ua.indexOf('Chrome') > -1 && ua.indexOf('Edg') === -1) {
+                name = 'Chrome';
+                version = ua.match(/Chrome\/(\d+\.\d+)/)?.[1] || '';
+                engine = 'Chromium';
+            } else if (ua.indexOf('Safari') > -1 && ua.indexOf('Chrome') === -1) {
+                name = 'Safari';
+                version = ua.match(/Version\/(\d+\.\d+)/)?.[1] || '';
+                engine = 'WebKit';
+            } else if (ua.indexOf('Firefox') > -1) {
+                name = 'Firefox';
+                version = ua.match(/Firefox\/(\d+\.\d+)/)?.[1] || '';
+                engine = 'Gecko';
+            } else if (ua.indexOf('Opera') > -1 || ua.indexOf('OPR') > -1) {
+                name = 'Opera';
+                version = ua.match(/(?:Opera|OPR)\/(\d+\.\d+)/)?.[1] || '';
+                engine = 'Chromium';
+            } else if (name === 'Unknown' && window.chrome) {
+                // Final fallback for unknown Chromium-based browsers like Ray Browser
+                console.log('🔍 Unknown Chromium-based browser detected in interface, defaulting to Chrome');
+                // Check if we have brand info from Client Hints to show in parentheses
+                const brandInfo = this.getBrowserBrandFromClientHints();
+                if (brandInfo.name && brandInfo.name !== 'Unknown') {
+                    name = `Chrome (${brandInfo.name})`;
+                    console.log(`🎯 Showing as Chrome with brand: ${brandInfo.name}`);
+                } else {
+                    name = 'Chrome';
+                }
+                version = ua.match(/Chrome\/(\d+\.\d+)/)?.[1] || '';
+                engine = 'Chromium';
+            }
         }
         
-        // Use fallback checking for initial display
-        const browserKey = name.toLowerCase().replace(' ', '');
+        const icon = this.getBrowserIcon(name);
+        const browserKey = name.toLowerCase().replace(/[^a-z0-9]/g, '');
         const updateStatus = this.checkBrowserUpdateFallback(browserKey, version);
         const updateBadge = updateStatus.badge;
         
@@ -668,6 +686,117 @@ class TestingInterface {
             engine: engine ? `(${engine})` : '',
             updateBadge
         };
+    }
+
+    /**
+     * Get browser brand information from User-Agent Client Hints API
+     */
+    getBrowserBrandFromClientHints() {
+        let brandInfo = { name: 'Unknown', version: '' };
+        
+        try {
+            if (navigator.userAgentData && navigator.userAgentData.brands) {
+                const brands = navigator.userAgentData.brands;
+                
+                // Find the most specific brand (usually the actual browser)
+                const specificBrand = brands.find(brand => 
+                    brand.brand && 
+                    !brand.brand.includes('Not') && 
+                    !brand.brand.includes('Chromium') &&
+                    brand.brand !== 'Google Chrome'
+                );
+                
+                if (specificBrand) {
+                    brandInfo.name = specificBrand.brand;
+                    brandInfo.version = specificBrand.version;
+                } else {
+                    const chromeBrand = brands.find(brand => 
+                        brand.brand === 'Google Chrome' || 
+                        brand.brand === 'Chrome'
+                    );
+                    if (chromeBrand) {
+                        brandInfo.name = 'Chrome';
+                        brandInfo.version = chromeBrand.version;
+                    }
+                }
+                
+                console.log('🔍 Client Hints brands detected:', brands);
+                console.log('🎯 Selected brand for display:', brandInfo);
+            }
+        } catch (error) {
+            console.log('ℹ️ User-Agent Client Hints not supported:', error.message);
+        }
+        
+        return brandInfo;
+    }
+
+    /**
+     * Extract version from UA based on browser name
+     */
+    extractVersionFromUA(ua, browserName) {
+        const patterns = {
+            'Ray Browser': /Chrome\/(\d+\.\d+)/,
+            'Arc': /Chrome\/(\d+\.\d+)/,
+            'Brave': /Chrome\/(\d+\.\d+)/,
+            'Vivaldi': /Vivaldi\/(\d+\.\d+)/,
+            'Opera': /OPR\/(\d+\.\d+)/,
+            'Microsoft Edge': /Edg\/(\d+\.\d+)/,
+            'Chrome': /Chrome\/(\d+\.\d+)/,
+            'Firefox': /Firefox\/(\d+\.\d+)/,
+            'Safari': /Version\/(\d+\.\d+)/
+        };
+        
+        const pattern = patterns[browserName] || patterns['Chrome'];
+        const match = ua.match(pattern);
+        return match ? match[1] : '0';
+    }
+
+    /**
+     * Get rendering engine based on browser name
+     */
+    getEngineFromBrowser(browserName) {
+        const engines = {
+            'Chrome': 'Chromium',
+            'Microsoft Edge': 'Chromium',
+            'Opera': 'Chromium',
+            'Brave': 'Chromium',
+            'Vivaldi': 'Chromium',
+            'Arc': 'Chromium',
+            'Ray Browser': 'Chromium',
+            'Firefox': 'Gecko',
+            'Safari': 'WebKit'
+        };
+        
+        return engines[browserName] || 'Chromium';
+    }
+
+    /**
+     * Get browser icon based on name
+     */
+    getBrowserIcon(name) {
+        // Handle "Chrome (Brand)" format - extract the brand name for icon selection
+        let iconName = name;
+        const brandMatch = name.match(/^Chrome \((.+)\)$/);
+        if (brandMatch) {
+            iconName = brandMatch[1]; // Use the brand name for icon selection
+        }
+
+        const icons = {
+            'Microsoft Edge': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M21.86 7.84c-.32-1.96-1.08-3.74-2.21-5.27C18.44.86 16.82 0 15.04 0c-1.86 0-3.54.92-4.86 2.45-1.32-1.53-3-2.45-4.86-2.45C3.5 0 1.88.86.67 2.57-.46 4.1-1.22 5.88-1.54 7.84c-.18.96-.18 1.96 0 2.92.36 2.64 1.44 5.04 3.15 6.96 1.89 2.13 4.32 3.28 6.93 3.28s5.04-1.15 6.93-3.28c1.71-1.92 2.79-4.32 3.15-6.96.18-.96.18-1.96 0-2.92z" fill="#0078d4"/></svg>',
+            'Edge': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M21.86 7.84c-.32-1.96-1.08-3.74-2.21-5.27C18.44.86 16.82 0 15.04 0c-1.86 0-3.54.92-4.86 2.45-1.32-1.53-3-2.45-4.86-2.45C3.5 0 1.88.86.67 2.57-.46 4.1-1.22 5.88-1.54 7.84c-.18.96-.18 1.96 0 2.92.36 2.64 1.44 5.04 3.15 6.96 1.89 2.13 4.32 3.28 6.93 3.28s5.04-1.15 6.93-3.28c1.71-1.92 2.79-4.32 3.15-6.96.18-.96.18-1.96 0-2.92z" fill="#0078d4"/></svg>',
+            'Chrome': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="url(#chrome-gradient)"/><circle cx="12" cy="12" r="4" fill="#4285f4"/><path d="M12 2C8.13 2 4.79 4.24 3.11 7.5l4.33 7.5C8.59 16.65 10.13 17 12 17s3.41-.35 4.56-1l4.33-7.5C19.21 4.24 15.87 2 12 2z" fill="#ea4335"/><path d="M3.11 16.5C4.79 19.76 8.13 22 12 22s7.21-2.24 8.89-5.5l-4.33-7.5C15.41 7.35 13.87 7 12 7s-3.41.35-4.56 1L3.11 16.5z" fill="#34a853"/><defs><linearGradient id="chrome-gradient"><stop offset="0%" stop-color="#fdd663"/><stop offset="100%" stop-color="#f7931e"/></linearGradient></defs></svg>',
+            'Safari': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="url(#safari-gradient)"/><path d="M12 4l1.5 6.5L20 12l-6.5 1.5L12 20l-1.5-6.5L4 12l6.5-1.5L12 4z" fill="white" stroke="#0066cc" stroke-width="0.5"/><defs><linearGradient id="safari-gradient"><stop offset="0%" stop-color="#00aaff"/><stop offset="100%" stop-color="#0066cc"/></linearGradient></defs></svg>',
+            'Firefox': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0z" fill="url(#firefox-gradient)"/><path d="M19.5 7.5c-1.5-3-4.5-5-8-5-3.5 0-6.5 2-8 5 0 0 2.5-2 5.5-2s5.5 2 5.5 2c1 0 1.5.5 1.5 1.5v3c0 1.5 1 2.5 2.5 2.5s2.5-1 2.5-2.5V7.5z" fill="#ff6611"/><defs><linearGradient id="firefox-gradient"><stop offset="0%" stop-color="#ff9500"/><stop offset="100%" stop-color="#ff6611"/></linearGradient></defs></svg>',
+            'Opera': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#ff1b2d"/><path d="M12 4c-2.21 0-4 3.58-4 8s1.79 8 4 8 4-3.58 4-8-1.79-8-4-8z" fill="white"/></svg>',
+            'Brave': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 0L8 8h8l-4-8z" fill="#fb542b"/><path d="M4 8l8 4-8 12V8z" fill="#fb542b"/><path d="M20 8v16l-8-12 8-4z" fill="#fb542b"/><circle cx="12" cy="16" r="2" fill="white"/></svg>',
+            'Vivaldi': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#ef3939"/><path d="M8 8h8v8H8z" fill="white"/><path d="M10 10h4v4h-4z" fill="#ef3939"/></svg>',
+            'Arc': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="url(#arc-gradient)"/><path d="M12 6a6 6 0 0 1 6 6" stroke="white" stroke-width="2" fill="none"/><path d="M12 6a6 6 0 0 0-6 6" stroke="white" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="2" fill="white"/><defs><linearGradient id="arc-gradient"><stop offset="0%" stop-color="#ff6b6b"/><stop offset="100%" stop-color="#4ecdc4"/></linearGradient></defs></svg>',
+            'Ray Browser': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="url(#ray-gradient)"/><path d="M12 6L8 12l4 6 4-6-4-6z" fill="white"/><circle cx="12" cy="12" r="2" fill="#ff6b35"/><defs><linearGradient id="ray-gradient"><stop offset="0%" stop-color="#ff6b35"/><stop offset="100%" stop-color="#f7931e"/></linearGradient></defs></svg>',
+            'DuckDuckGo': '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#de5833"/><path d="M8 10c0-2 2-4 4-4s4 2 4 4c0 1-1 2-2 2h-4c-1 0-2-1-2-2z" fill="white"/><circle cx="10" cy="9" r="1" fill="#de5833"/><circle cx="14" cy="9" r="1" fill="#de5833"/><path d="M12 14c-1 0-2-.5-2-1h4c0 .5-1 1-2 1z" fill="#de5833"/></svg>'
+        };
+        
+        // Try to get icon for the detected name first, then try the iconName (brand), then fallback
+        return icons[iconName] || icons[name] || icons['Chrome'] || '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#6b7280"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="white" stroke-width="1" fill="none"/></svg>';
     }
     
     /**
@@ -698,15 +827,41 @@ class TestingInterface {
         }
         
         try {
-            // Fetch latest browser version data from caniuse API
-            const response = await fetch('https://caniuse.com/api/browser-versions');
+            // Try server-side proxy first (avoids CORS), fallback to direct API
+            let response;
+            try {
+                response = await fetch('/api/caniuse/browser-versions', {
+                    method: 'GET',
+                    cache: 'default'
+                });
+            } catch (proxyError) {
+                // If proxy fails, try direct API (may fail due to CORS)
+                response = await fetch('https://caniuse.com/api/browser-versions', {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache'
+                });
+            }
             
             if (!response.ok) {
                 // Fallback to static version checking if API fails
                 return this.checkBrowserUpdateFallback(browserKey, currentVersion);
             }
             
-            const data = await response.json();
+            // Check if response is actually JSON before parsing
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                // Response is not JSON (likely HTML error page)
+                return this.checkBrowserUpdateFallback(browserKey, currentVersion);
+            }
+            
+            let data;
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                // JSON parsing failed (response was not valid JSON)
+                return this.checkBrowserUpdateFallback(browserKey, currentVersion);
+            }
             const browserData = data[browserKey];
             
             if (!browserData || !browserData.versions) {
@@ -736,7 +891,17 @@ class TestingInterface {
             }
             
         } catch (error) {
-            console.warn('Failed to check browser version from caniuse:', error);
+            // Silently fallback - CORS errors, network errors, and JSON parse errors are expected
+            // Only log unexpected errors
+            const isExpectedError = error.name === 'TypeError' || 
+                                   error.name === 'SyntaxError' ||
+                                   error.message.includes('CORS') || 
+                                   error.message.includes('Failed to fetch') ||
+                                   error.message.includes('Unexpected token');
+            
+            if (!isExpectedError) {
+                console.warn('Failed to check browser version from caniuse:', error);
+            }
             return this.checkBrowserUpdateFallback(browserKey, currentVersion);
         }
     }

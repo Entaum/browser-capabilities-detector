@@ -72,17 +72,40 @@ class CommunicationTests {
             
             try {
                 // Use a test WebSocket echo service (non-blocking test)
-                testSocket = new WebSocket('wss://echo.websocket.events/');
+                // Note: This may fail due to network issues - we handle it gracefully
+                // WebSocket connection errors are expected and handled silently
+                try {
+                    testSocket = new WebSocket('wss://echo.websocket.events/');
+                } catch (wsError) {
+                    // Synchronous error during WebSocket creation
+                    // This is rare but can happen in some environments
+                    return {
+                        status: 'partial',
+                        details: 'WebSocket API available but connection test failed',
+                        score: 40
+                    };
+                }
                 
                 const testPromise = new Promise((resolve) => {
                     const timeout = setTimeout(() => {
+                        if (testSocket) {
+                            try {
+                                testSocket.close();
+                            } catch (e) {
+                                // Ignore close errors
+                            }
+                        }
                         resolve('timeout');
                     }, 3000);
 
                     testSocket.onopen = () => {
                         clearTimeout(timeout);
                         connectionTest = true;
-                        testSocket.send('test');
+                        try {
+                            testSocket.send('test');
+                        } catch (e) {
+                            resolve('error');
+                        }
                     };
 
                     testSocket.onmessage = (event) => {
@@ -94,17 +117,28 @@ class CommunicationTests {
                         }
                     };
 
-                    testSocket.onerror = () => {
+                    testSocket.onerror = (error) => {
                         clearTimeout(timeout);
+                        // Suppress error - don't log or re-throw
                         resolve('error');
+                    };
+                    
+                    testSocket.onclose = () => {
+                        // Connection closed - this is normal
                     };
                 });
 
                 const result = await testPromise;
                 
-                // Always close the connection
-                if (testSocket && testSocket.readyState === WebSocket.OPEN) {
-                    testSocket.close();
+                // Always close the connection safely
+                if (testSocket) {
+                    try {
+                        if (testSocket.readyState === WebSocket.OPEN || testSocket.readyState === WebSocket.CONNECTING) {
+                            testSocket.close();
+                        }
+                    } catch (e) {
+                        // Ignore close errors
+                    }
                 }
 
                 const capabilities = {

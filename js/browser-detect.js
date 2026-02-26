@@ -22,7 +22,7 @@ class BrowserDetector {
     }
 
     /**
-     * Detect browser name and version using feature detection + UA parsing
+     * Detect browser name and version using User-Agent Client Hints + feature detection + UA parsing
      */
     detectBrowser() {
         const ua = this.userAgent;
@@ -33,6 +33,19 @@ class BrowserDetector {
             isSupported: false
         };
 
+        // First try User-Agent Client Hints API for accurate brand detection
+        const brandInfo = this.getBrowserBrandFromClientHints();
+        if (brandInfo.name && brandInfo.name !== 'Unknown') {
+            browser.name = brandInfo.name;
+            browser.version = brandInfo.version || this.extractVersionFromUA(ua, browser.name);
+            browser.engine = this.getEngineFromBrowser(browser.name);
+            browser.isSupported = this.isBrowserSupported(browser.name);
+            // Store the original brand for potential fallback display
+            browser.originalBrand = brandInfo.name;
+            return browser;
+        }
+
+        // Fallback to traditional UA parsing
         // Chrome (including Chromium-based browsers)
         if (window.chrome && ua.includes('Chrome')) {
             const isEdge = ua.includes('Edg/');
@@ -75,6 +88,22 @@ class BrowserDetector {
             browser.version = this.extractVersion(ua, /(?:MSIE |rv:)(\d+[\.\d]*)/);
             browser.engine = 'Trident';
             browser.isSupported = false;
+        }
+        // Final fallback: if we still have Unknown, default to Chrome for Chromium-based browsers
+        else if (browser.name === 'Unknown' && window.chrome) {
+            console.log('🔍 Unknown Chromium-based browser detected, defaulting to Chrome');
+            // Check if we have brand info from Client Hints
+            const brandInfo = this.getBrowserBrandFromClientHints();
+            if (brandInfo.name && brandInfo.name !== 'Unknown') {
+                browser.name = `Chrome (${brandInfo.name})`;
+                browser.originalBrand = brandInfo.name;
+                console.log(`🎯 Showing as Chrome with brand: ${brandInfo.name}`);
+            } else {
+                browser.name = 'Chrome';
+            }
+            browser.version = this.extractVersion(ua, /Chrome\/(\d+[\.\d]*)/);
+            browser.engine = 'Blink';
+            browser.isSupported = true;
         }
 
         return browser;
@@ -179,6 +208,115 @@ class BrowserDetector {
     }
 
     /**
+     * Get browser brand information from User-Agent Client Hints API
+     */
+    getBrowserBrandFromClientHints() {
+        let brandInfo = { name: 'Unknown', version: '' };
+        
+        try {
+            // Check if User-Agent Client Hints API is available
+            if (navigator.userAgentData && navigator.userAgentData.brands) {
+                const brands = navigator.userAgentData.brands;
+                
+                // Find the most specific brand (usually the actual browser)
+                // Skip generic brands like "Chromium" and "Not_A Brand"
+                const specificBrand = brands.find(brand => 
+                    brand.brand && 
+                    !brand.brand.includes('Not') && 
+                    !brand.brand.includes('Chromium') &&
+                    brand.brand !== 'Google Chrome' // We'll handle Chrome specially
+                );
+                
+                if (specificBrand) {
+                    brandInfo.name = specificBrand.brand;
+                    brandInfo.version = specificBrand.version;
+                } else {
+                    // Fallback to Chrome if only generic brands found and we detect Chrome features
+                    const chromeBrand = brands.find(brand => 
+                        brand.brand === 'Google Chrome' || 
+                        brand.brand === 'Chrome'
+                    );
+                    if (chromeBrand && window.chrome) {
+                        brandInfo.name = 'Chrome';
+                        brandInfo.version = chromeBrand.version;
+                    }
+                    // If we still don't have a brand but this looks like a Chromium browser, return Unknown
+                    // so the fallback logic can handle it properly
+                }
+                
+                console.log('🔍 Client Hints brands detected:', brands);
+                console.log('🎯 Selected brand:', brandInfo);
+            }
+            
+            // Also check sec-ch-ua header if available
+            if (brandInfo.name === 'Unknown' && navigator.userAgentData) {
+                // Try to get high entropy values for more detailed info
+                navigator.userAgentData.getHighEntropyValues(['brands', 'fullVersionList'])
+                    .then(highEntropyData => {
+                        if (highEntropyData.fullVersionList) {
+                            console.log('🔍 High entropy brand data:', highEntropyData.fullVersionList);
+                        }
+                    })
+                    .catch(error => {
+                        console.log('ℹ️ High entropy client hints not available:', error.message);
+                    });
+            }
+        } catch (error) {
+            console.log('ℹ️ User-Agent Client Hints not supported:', error.message);
+        }
+        
+        return brandInfo;
+    }
+
+    /**
+     * Extract version from UA based on browser name
+     */
+    extractVersionFromUA(ua, browserName) {
+        const patterns = {
+            'Ray Browser': /Chrome\/(\d+[\.\d]*)/,
+            'Arc': /Chrome\/(\d+[\.\d]*)/,
+            'Brave': /Chrome\/(\d+[\.\d]*)/,
+            'Vivaldi': /Vivaldi\/(\d+[\.\d]*)/,
+            'Opera': /OPR\/(\d+[\.\d]*)/,
+            'Edge': /Edg\/(\d+[\.\d]*)/,
+            'Chrome': /Chrome\/(\d+[\.\d]*)/,
+            'Firefox': /Firefox\/(\d+[\.\d]*)/,
+            'Safari': /Version\/(\d+[\.\d]*)/
+        };
+        
+        const pattern = patterns[browserName] || patterns['Chrome'];
+        return this.extractVersion(ua, pattern);
+    }
+
+    /**
+     * Get rendering engine based on browser name
+     */
+    getEngineFromBrowser(browserName) {
+        const engines = {
+            'Chrome': 'Blink',
+            'Edge': 'Blink',
+            'Opera': 'Blink',
+            'Brave': 'Blink',
+            'Vivaldi': 'Blink',
+            'Arc': 'Blink',
+            'Ray Browser': 'Blink',
+            'Firefox': 'Gecko',
+            'Safari': 'WebKit',
+            'Internet Explorer': 'Trident'
+        };
+        
+        return engines[browserName] || 'Blink'; // Default to Blink for Chromium-based browsers
+    }
+
+    /**
+     * Check if browser is supported for gaming
+     */
+    isBrowserSupported(browserName) {
+        const unsupportedBrowsers = ['Internet Explorer'];
+        return !unsupportedBrowsers.includes(browserName);
+    }
+
+    /**
      * Convert Windows NT version to friendly name
      */
     getWindowsVersion(ntVersion) {
@@ -268,17 +406,49 @@ class BrowserDetector {
      */
     checkMinimumRequirements() {
         try {
-            const minVersions = {
-                'Chrome': 80,
-                'Firefox': 75,
-                'Safari': 13,
-                'Edge': 80
-            };
-
             const browser = this.browserInfo || { name: 'Unknown', version: '0' };
             const browserVersion = parseInt(browser.version) || 0;
-            const minVersion = minVersions[browser.name];
 
+            // Define minimum versions by engine/browser family
+            const minVersions = {
+                // Chromium-based browsers (Chrome, Edge, Opera, Brave, Arc, Ray Browser, etc.)
+                'Chrome': 80,
+                'Edge': 80,
+                'Opera': 67,
+                'Brave': 80,
+                'Vivaldi': 80,
+                'Arc': 80,
+                'Ray Browser': 80,
+                
+                // Other engines
+                'Firefox': 75,
+                'Safari': 13,
+                
+                // Unsupported
+                'Internet Explorer': null
+            };
+
+            // Get minimum version for this browser
+            let minVersion = minVersions[browser.name];
+            
+            // Handle "Chrome (Brand)" format - use Chrome requirements
+            if (!minVersion && browser.name.startsWith('Chrome (')) {
+                minVersion = minVersions['Chrome'];
+                console.log(`🔍 Using Chrome requirements for branded browser: ${browser.name}`);
+            }
+            
+            // If browser not found in list, check if it's a Chromium-based browser
+            if (!minVersion && browser.engine === 'Blink') {
+                console.log(`🔍 Unknown Chromium-based browser "${browser.name}", using Chrome requirements`);
+                minVersion = minVersions['Chrome']; // Default to Chrome requirements for Chromium browsers
+            }
+
+            // Handle explicitly unsupported browsers
+            if (minVersion === null) {
+                return { supported: false, reason: `${browser.name} is not supported` };
+            }
+
+            // Handle unknown browsers
             if (!minVersion) {
                 return { supported: false, reason: 'Unsupported browser' };
             }
